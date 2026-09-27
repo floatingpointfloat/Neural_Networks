@@ -1,1 +1,1 @@
-PGN_PATH = ""
+PGN_PATH = r"C:\Users\Gigabyte\Desktop\lichess_db_standard_rated_2026-08.pgn.zst"
