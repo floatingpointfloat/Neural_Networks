@@ -5,7 +5,7 @@ class ChessBrainModel(nn.Module):
         super(ChessBrainModel, self).__init__()
 
         self.features = nn.Sequential(
-            nn.Conv2d(13, 64, kernel_size=3, padding=1),
+            nn.Conv2d(19, 64, kernel_size=3, padding=1),
             nn.ReLU(), #making the model nonlinear - better :) can learn complex stuff
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.ReLU(),
