@@ -1,8 +1,8 @@
 import torch.nn as nn
 
-class ChessBrainModel(nn.Module):
+class ChessValueNet(nn.Module):
     def __init__(self):
-        super(ChessBrainModel, self).__init__()
+        super(ChessValueNet, self).__init__()
 
         self.features = nn.Sequential(
             nn.Conv2d(18, 64, kernel_size=3, padding=1),
@@ -26,5 +26,3 @@ class ChessBrainModel(nn.Module):
         x = self.features(x)
         x = self.fully_connected(x)
         return x
-
-model = ChessBrainModel()
