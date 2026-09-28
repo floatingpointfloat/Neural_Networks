@@ -10,6 +10,7 @@ import zstandard as zstd
 
 from config import PGN_PATH, STOCKFISH_PATH
 from model import ChessValueNet
+from board_to_tensor import board_to_tensor
 from find_best_move import find_best_move
 
 
@@ -17,11 +18,10 @@ from find_best_move import find_best_move
 # Einstellungen
 # ============================================================
 
-NUMBER_OF_POSITIONS = 10
-
+NUMBER_OF_POSITIONS = 100
 
 # Deine KI
-DEPTH = 4
+DEPTH = 3
 
 # Stockfish
 STOCKFISH_TIME = 1.0
@@ -47,7 +47,10 @@ device = torch.device(
 print("Device:", device)
 
 if torch.cuda.is_available():
-    print("GPU:", torch.cuda.get_device_name(0))
+    print(
+        "GPU:",
+        torch.cuda.get_device_name(0)
+    )
 
 
 # ============================================================
@@ -74,6 +77,25 @@ print("Model loaded.")
 
 
 # ============================================================
+# Direkte Bewertung einer Stellung durch das Netzwerk
+# ============================================================
+
+def evaluate_position(board):
+
+    tensor = board_to_tensor(board)
+
+    tensor = tensor.unsqueeze(0).to(device)
+
+    with torch.no_grad():
+
+        value = model(
+            tensor
+        ).item()
+
+    return value
+
+
+# ============================================================
 # Zufällige Schachpositionen aus PGN laden
 # ============================================================
 
@@ -91,7 +113,9 @@ def get_positions(number_of_positions):
 
         dctx = zstd.ZstdDecompressor()
 
-        with dctx.stream_reader(pgn_file) as reader:
+        with dctx.stream_reader(
+            pgn_file
+        ) as reader:
 
             text_stream = io.TextIOWrapper(
                 reader,
@@ -109,8 +133,12 @@ def get_positions(number_of_positions):
 
                 headers = game.headers
 
+                # ------------------------------------------------
                 # Elo filtern
+                # ------------------------------------------------
+
                 try:
+
                     white_elo = int(
                         headers["WhiteElo"]
                     )
@@ -119,16 +147,24 @@ def get_positions(number_of_positions):
                         headers["BlackElo"]
                     )
 
-                except (KeyError, ValueError):
+                except (
+                    KeyError,
+                    ValueError
+                ):
+
                     continue
 
                 if (
                     white_elo < MIN_ELO
                     or black_elo < MIN_ELO
                 ):
+
                     continue
 
+                # ------------------------------------------------
                 # Alle Positionen des Spiels sammeln
+                # ------------------------------------------------
+
                 board = game.board()
 
                 game_positions = []
@@ -147,16 +183,22 @@ def get_positions(number_of_positions):
                 if not game_positions:
                     continue
 
-                # Eine zufällige Position aus diesem Spiel
+                # ------------------------------------------------
+                # Zufällige Position aus diesem Spiel
+                # ------------------------------------------------
+
                 fen = random.choice(
                     game_positions
                 )
 
-                positions.append(fen)
+                positions.append(
+                    fen
+                )
 
                 print(
                     f"Loaded position "
-                    f"{len(positions)}/{number_of_positions}"
+                    f"{len(positions)}/"
+                    f"{number_of_positions}"
                 )
 
     return positions
@@ -271,8 +313,17 @@ def main():
         engine = start_stockfish()
 
         same_move_count = 0
+
         total_cpl = 0
+
         successful_tests = 0
+
+        # --------------------------------------------------------
+        # Zusätzliche Statistiken für das neuronale Netzwerk
+        # --------------------------------------------------------
+
+        total_nn_before = 0.0
+        total_nn_after = 0.0
 
         print()
         print("=" * 60)
@@ -287,7 +338,8 @@ def main():
             print()
             print("=" * 60)
             print(
-                f"Position {index}/{len(positions)}"
+                f"Position {index}/"
+                f"{len(positions)}"
             )
             print("=" * 60)
 
@@ -309,9 +361,28 @@ def main():
                 else "Black"
             )
 
-            # ------------------------------------------------
+            # ====================================================
+            # Direkte NN-Bewertung der Ausgangsstellung
+            # ====================================================
+
+            print()
+            print(
+                "Neural network is "
+                "evaluating position..."
+            )
+
+            nn_before = evaluate_position(
+                board
+            )
+
+            print(
+                f"NN evaluation before move: "
+                f"{nn_before:+.6f}"
+            )
+
+            # ====================================================
             # KI
-            # ------------------------------------------------
+            # ====================================================
 
             print()
             print("Your AI is thinking...")
@@ -346,13 +417,32 @@ def main():
             )
 
             print(
-                f"AI evaluation: "
+                f"AI search evaluation: "
                 f"{ai_eval:+.6f}"
             )
 
-            # ------------------------------------------------
+            # ====================================================
+            # Direkte NN-Bewertung NACH dem AI-Zug
+            # ====================================================
+
+            ai_board = board.copy()
+
+            ai_board.push(
+                ai_move
+            )
+
+            nn_after = evaluate_position(
+                ai_board
+            )
+
+            print(
+                f"NN evaluation after AI move: "
+                f"{nn_after:+.6f}"
+            )
+
+            # ====================================================
             # Stockfish
-            # ------------------------------------------------
+            # ====================================================
 
             print()
             print(
@@ -405,9 +495,9 @@ def main():
                 f"{sf_score / 100:+.2f}"
             )
 
-            # ------------------------------------------------
-            # Vergleich
-            # ------------------------------------------------
+            # ====================================================
+            # Vergleich der Züge
+            # ====================================================
 
             same_move = (
                 ai_move == sf_move
@@ -430,9 +520,9 @@ def main():
                     "DIFFERENT MOVE"
                 )
 
-            # ------------------------------------------------
+            # ====================================================
             # Stockfish bewertet KI-Zug
-            # ------------------------------------------------
+            # ====================================================
 
             print()
             print(
@@ -453,7 +543,8 @@ def main():
             except Exception as error:
 
                 print(
-                    "Could not evaluate AI move:"
+                    "Could not evaluate "
+                    "AI move:"
                 )
 
                 print(
@@ -468,9 +559,9 @@ def main():
                 f"{ai_move_score / 100:+.2f}"
             )
 
-            # ------------------------------------------------
+            # ====================================================
             # Centipawn Loss
-            # ------------------------------------------------
+            # ====================================================
 
             cpl = (
                 sf_score
@@ -484,6 +575,11 @@ def main():
             )
 
             total_cpl += cpl
+
+            # NN-Statistiken
+            total_nn_before += nn_before
+            total_nn_after += nn_after
+
             successful_tests += 1
 
             print(
@@ -491,9 +587,52 @@ def main():
                 f"{cpl:.1f}"
             )
 
-        # ====================================================
-        # Zusammenfassung
-        # ====================================================
+            # ====================================================
+            # Zusammenfassung dieser Position
+            # ====================================================
+
+            print()
+            print(
+                "-" * 60
+            )
+
+            print(
+                "POSITION SUMMARY"
+            )
+
+            print(
+                f"NN before move:       "
+                f"{nn_before:+.6f}"
+            )
+
+            print(
+                f"NN search evaluation: "
+                f"{ai_eval:+.6f}"
+            )
+
+            print(
+                f"NN after AI move:     "
+                f"{nn_after:+.6f}"
+            )
+
+            print(
+                f"Stockfish best move:  "
+                f"{sf_score / 100:+.2f}"
+            )
+
+            print(
+                f"Stockfish AI move:    "
+                f"{ai_move_score / 100:+.2f}"
+            )
+
+            print(
+                f"CPL:                  "
+                f"{cpl:.1f}"
+            )
+
+        # ========================================================
+        # Gesamtergebnis
+        # ========================================================
 
         print()
         print()
@@ -519,6 +658,17 @@ def main():
                 / successful_tests
             )
 
+            average_nn_before = (
+                total_nn_before
+                / successful_tests
+            )
+
+            average_nn_after = (
+                total_nn_after
+                / successful_tests
+            )
+
+            print()
             print(
                 "Same move as Stockfish:",
                 f"{same_move_count}"
@@ -533,6 +683,19 @@ def main():
             print(
                 "Average centipawn loss:",
                 f"{average_cpl:.1f}"
+            )
+
+            print()
+            print(
+                "Average NN evaluation "
+                "before move:",
+                f"{average_nn_before:+.6f}"
+            )
+
+            print(
+                "Average NN evaluation "
+                "after AI move:",
+                f"{average_nn_after:+.6f}"
             )
 
         else:
@@ -552,8 +715,11 @@ def main():
             )
 
             try:
+
                 engine.quit()
+
             except Exception:
+
                 pass
 
             print(
