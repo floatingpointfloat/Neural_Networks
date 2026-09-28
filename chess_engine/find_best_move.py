@@ -96,6 +96,9 @@ def order_moves(board:chess.Board):
         if move.promotion is not None:
             score += 200
 
+        if board.is_castling(move):
+            score += 50
+
         return score     
 
     moves.sort(key=score_moves, reverse=True)  
@@ -152,7 +155,7 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
 
 def find_best_move(board: chess.Board, depth, model, device, time_limit=TIME_LIMIT):
     start_time = time.time()
-    
+
     best_move = None
 
     if board.turn == chess.WHITE:

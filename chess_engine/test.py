@@ -14,7 +14,7 @@ from find_best_move import find_best_move
 # Einstellungen
 # ============================================================
 
-DEPTH = 3
+DEPTH = 2
 
 BOARD_SIZE = 640
 SQUARE_SIZE = BOARD_SIZE // 8
