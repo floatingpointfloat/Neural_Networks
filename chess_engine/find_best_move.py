@@ -16,6 +16,66 @@ def evaluate_board(board: chess.Board, model, device):
 
     return value
 
+#check for important remaining moves even if the depth is zero
+def quiescence_search(board: chess.Board, alpha, beta, is_maximizing, model, device):
+    stand_pat = evaluate_board(board, model, device)
+
+    if is_maximizing:
+        if stand_pat >= beta:
+            return beta
+
+        if stand_pat > alpha:
+            alpha = stand_pat
+
+        for move in order_moves(board):
+            if not board.is_capture(move):
+                continue
+
+            board.push(move)
+
+            evaluation = quiescence_search(board, alpha, beta, False, model, device)
+
+            board.pop()
+
+            if evaluation > alpha:
+                alpha = evaluation
+
+            if alpha >= beta:
+                break
+
+        return alpha
+    else:
+        if stand_pat <= alpha:
+            return alpha
+
+        if stand_pat < beta:
+            beta = stand_pat
+
+        for move in order_moves(board):
+            if not board.is_capture(move):
+                continue
+
+            board.push(move)
+
+            evaluation = quiescence_search(
+                board,
+                alpha,
+                beta,
+                True,
+                model,
+                device
+            )
+
+            board.pop()
+
+            if evaluation < beta:
+                beta = evaluation
+
+            if beta <= alpha:
+                break
+
+        return beta
+
 def order_moves(board:chess.Board):
     moves = list(board.legal_moves)
 
@@ -51,7 +111,7 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
         return 0.0
 
     if depth == 0:
-        return evaluate_board(board, model, device)
+        return quiescence_search(board, alpha, beta, is_maximizing, model, device)
 
     if is_maximizing:
         max_eval = float("-inf")
