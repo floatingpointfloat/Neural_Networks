@@ -1,19 +1,16 @@
 import io
 import zstandard as zstd
 import chess
+import chess.engine
 import chess.pgn
 import torch
 from torch.utils.data import IterableDataset
 
 from board_to_tensor import board_to_tensor
+from config import STOCKFISH_PATH
 
-
-RESULT_TO_VALUE = {
-    "1-0": 1.0,
-    "0-1": -1.0,
-    "1/2-1/2": 0.0
-}
-
+ANALYZE_EVERY_NTH_MOVE = 3
+STOCKFISH_TIME = 0.1
 
 class ChessDataset(IterableDataset):
 
@@ -27,78 +24,89 @@ class ChessDataset(IterableDataset):
 
         games_loaded = 0
 
-        with open(self.pgn_path, "rb") as lichess_games:
+        engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH) #start stockfish
 
-            dctx = zstd.ZstdDecompressor()
+        try: 
+            with open(self.pgn_path, "rb") as lichess_games:
 
-            # loading the compressed lichess games over zstd
-            with dctx.stream_reader(lichess_games) as reader:
+                dctx = zstd.ZstdDecompressor()
 
-                text_stream = io.TextIOWrapper(
-                    reader,
-                    encoding="utf-8"
-                )
+                # loading the compressed lichess games over zstd
+                with dctx.stream_reader(lichess_games) as reader:
 
-                while True:
+                    text_stream = io.TextIOWrapper(
+                        reader,
+                        encoding="utf-8"
+                    )
 
-                    game = chess.pgn.read_game(text_stream)
+                    while True:
 
-                    if game is None:
-                        break
+                        game = chess.pgn.read_game(text_stream)
 
-                    # Break the loop after reaching the maximum number of loaded games
-                    if (
-                        self.max_games is not None
-                        and games_loaded >= self.max_games
-                    ):
-                        break
+                        if game is None:
+                            break
 
-                    headers = game.headers
-                    result = headers.get("Result")
-
-                    # Ignoring games without a valid result
-                    if result not in RESULT_TO_VALUE:
-                        continue
-
-                    # Only use games with the min_elo requirement
-                    if self.min_elo is not None:
-
-                        try:
-                            white_elo = int(headers["WhiteElo"])
-                            black_elo = int(headers["BlackElo"])
-
-                        except:
-                            continue
-
+                        # Break the loop after reaching the maximum number of loaded games
                         if (
-                            white_elo < self.min_elo
-                            or black_elo < self.min_elo
+                            self.max_games is not None
+                            and games_loaded >= self.max_games
                         ):
-                            continue
+                            break
 
-                    target = RESULT_TO_VALUE[result]
-                    board = game.board()
+                        headers = game.headers
 
-                    # one training example per position
-                    for move in game.mainline_moves():
+                        # Only use games with the min_elo requirement
+                        if self.min_elo is not None:
 
-                        tensor = board_to_tensor(board)
+                            try:
+                                white_elo = int(headers["WhiteElo"])
+                                black_elo = int(headers["BlackElo"])
 
-                        # Yield the position directly to the DataLoader
-                        # instead of storing all positions in RAM
-                        yield (
-                            tensor,
-                            torch.tensor(
-                                target,
-                                dtype=torch.float32
+                            except:
+                                continue
+
+                            if (
+                                white_elo < self.min_elo
+                                or black_elo < self.min_elo
+                            ):
+                                continue
+
+                        board = game.board()
+
+                        # one training example per position
+                        for i, move in enumerate(game.mainline_moves()):
+                            if i % ANALYZE_EVERY_NTH_MOVE == 0:
+                                tensor = board_to_tensor(board)
+
+                                analysis = engine.analyse(
+                                    board,
+                                    chess.engine.Limit(time=STOCKFISH_TIME)
+                                )
+
+                                score = analysis["score"].white().score(mate_score=10000)
+
+                                target = torch.tanh(
+                                    torch.tensor(score / 400.0, dtype=torch.float32)
+                                )
+
+                                print(
+                                f"Stockfish: {score:>6} cp | "
+                                f"Target: {target.item():+.4f}"
+                                )
+
+                                yield (
+                                    tensor,
+                                    target
+                                )
+
+                            board.push(move)
+
+                        games_loaded += 1
+
+                        if games_loaded % 500 == 0:
+                            print(
+                                f"Loaded {games_loaded} games"
                             )
-                        )
-
-                        board.push(move)
-
-                    games_loaded += 1
-
-                    if games_loaded % 100 == 0:
-                        print(
-                            f"Loaded {games_loaded} games"
-                        )
+        finally:
+            #close stockfish
+            engine.quit()
