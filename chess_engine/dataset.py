@@ -101,10 +101,10 @@ class ChessDataset(IterableDataset):
                                     torch.tensor(score / 400.0, dtype=torch.float32)
                                 )
 
-                                print(
-                                f"Stockfish: {score:>6} cp | "
-                                f"Target: {target.item():+.4f}"
-                                )
+                               #print(
+                               #f"Stockfish: {score:>6} cp | "
+                               #f"Target: {target.item():+.4f}"
+                               #)
 
                                 yield (
                                     tensor,
