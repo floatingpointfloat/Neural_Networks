@@ -8,7 +8,7 @@ from config import DATASET_PATH, PGN_PATH, DATASET_CHECKPOINT_PATH
 DATASET_CHECKPOINT_PATH = Path(DATASET_CHECKPOINT_PATH)
 DATASET_PATH = Path(DATASET_PATH)
 
-MAX_GAMES = 100 #processed games
+MAX_GAMES = 1000 #processed games
 
 # how many games should be processed before saving a checkpoint
 CHECKPOINT_EVERY = 25
