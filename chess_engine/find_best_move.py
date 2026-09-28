@@ -97,7 +97,7 @@ def order_moves(board:chess.Board):
             score += 200
 
         if board.is_castling(move):
-            score += 50
+            score += 40
 
         return score     
 
