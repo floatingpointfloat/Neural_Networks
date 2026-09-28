@@ -8,8 +8,7 @@ from config import DATASET_PATH
 ALLOW_TRAINING = True
 
 BATCH_SIZE = 64
-EPOCHS = 50
-
+EPOCHS = 20
 LEARNING_RATE = 0.0001
 
 # Path to the checkpoint folder
