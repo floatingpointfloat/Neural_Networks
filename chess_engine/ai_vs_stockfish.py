@@ -21,7 +21,7 @@ from find_best_move import find_best_move
 NUMBER_OF_POSITIONS = 10
 
 # Deine KI
-DEPTH = 3
+DEPTH = 4
 print(f"Depth searched: {DEPTH}")
 
 # Stockfish
