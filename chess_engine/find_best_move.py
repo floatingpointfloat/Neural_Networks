@@ -3,6 +3,8 @@ import torch
 
 from board_to_tensor import board_to_tensor
 
+PIECE_VALUES = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 1000}
+
 def evaluate_board(board: chess.Board, model, device):
     #evaluates a position using the cnn
 
@@ -13,6 +15,29 @@ def evaluate_board(board: chess.Board, model, device):
         value = model(tensor).item()
 
     return value
+
+def order_moves(board:chess.Board):
+    moves = list(board.legal_moves)
+
+    def score_moves(move):
+        score = 0
+
+        if board.is_capture(move):
+            attacker_value = PIECE_VALUES[(board.piece_at(move.from_square)).piece_type]
+            if board.is_en_passant(move): #catch en passant squares, no piece would actually be standing on those quares
+                victim_value = PIECE_VALUES[chess.PAWN]
+            else:
+                victim_value = PIECE_VALUES[(board.piece_at(move.to_square)).piece_type]
+
+            score += 100 * (victim_value / attacker_value)
+
+        if move.promotion is not None:
+            score += 200
+
+        return score     
+
+    moves.sort(key=score_moves, reverse=True)  
+    return moves 
 
 #minimax search function - alpha beta search tree pruning
 def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device):
@@ -30,7 +55,7 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
 
     if is_maximizing:
         max_eval = float("-inf")
-        for move in board.legal_moves:
+        for move in order_moves(board):
             board.push(move)
 
             evaluation = minimax(board, depth - 1, alpha, beta, False, model, device)
@@ -48,7 +73,7 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
     else:
         min_eval = float("+inf")
 
-        for move in board.legal_moves:
+        for move in order_moves(board):
             board.push(move)
 
             evaluation = minimax(board, depth - 1, alpha, beta, True, model, device)
@@ -74,7 +99,7 @@ def find_best_move(board: chess.Board, depth, model, device):
     alpha = float("-inf")
     beta = float("+inf")
 
-    for move in board.legal_moves:
+    for move in order_moves(board):
 
         board.push(move)
 
