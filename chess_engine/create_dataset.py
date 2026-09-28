@@ -114,16 +114,10 @@ for board_tensor, target, game_number in dataset:
 
         elapsed = time.time() - start_time
 
-        positions_per_second = (
-            len(boards) / elapsed
-            if elapsed > 0
-            else 0
-        )
-
         print(
             f"Positions: {len(boards)} | "
             f"New games: {new_games} | "
-            f"Speed: {positions_per_second:.2f} positions/s"
+            f"Time: {elapsed}"
         )
 
 # Convert the lists into tensors
