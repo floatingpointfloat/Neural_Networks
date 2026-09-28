@@ -86,7 +86,7 @@ for position in dataset:
 
         print(
             f"{len(boards):,} / "
-            f"{NUM_POSITIONS:,} Positionen"
+            f"{NUM_POSITIONS:,} positions"
         )
 
     #breaking out of the loop after enough positions
