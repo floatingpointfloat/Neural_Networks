@@ -1,12 +1,9 @@
 import torch
-import torch.nn.functional as F
-import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 from pathlib import Path
 
-from dataset import ChessDataset
 from model import ChessValueNet
-from config import PGN_PATH
+from config import DATA_PATH
 
 ALLOW_TRAINING = True
 MAX_GAMES = 10
@@ -38,35 +35,47 @@ model = ChessValueNet().to(device)
 if not ALLOW_TRAINING:
     raise RuntimeError("No Training currently allowed. Please do not train the model")
 
+# Load the saved dataset
+data = torch.load(
+    DATA_PATH,
+    map_location="cpu"
+)
 
-dataset = ChessDataset(
-    pgn_path=PGN_PATH,
-    max_games=MAX_GAMES,
-    min_elo=MIN_ELO
+boards = data["boards"]
+targets = data["targets"]
+
+print(f"Loaded dataset: {boards.shape[0]} positions")
+print(f"Boards shape:   {boards.shape}")
+print(f"Targets shape:  {targets.shape}")
+
+dataset = TensorDataset(
+    boards,
+    targets
 )
 
 loader = DataLoader(
     dataset,
-    batch_size=BATCH_SIZE
+    batch_size=BATCH_SIZE,
+    shuffle=True
 )
 
 # Check the target distribution - only for debug
-white_wins = 0
-draws = 0
-black_wins = 0
+print()
+print(
+    f"Target mean: {targets.mean().item():.6f}"
+)
 
-for boards, targets in loader:
+print(
+    f"Target std:  {targets.std().item():.6f}"
+)
 
-    white_wins += (targets == 1.0).sum().item()
-    draws += (targets == 0.0).sum().item()
-    black_wins += (targets == -1.0).sum().item()
+print(
+    f"Target min:  {targets.min().item():.6f}"
+)
 
-
-total = white_wins + draws + black_wins
-
-print(f"White wins: {white_wins} ({white_wins / total * 100:.2f}%)")
-print(f"Draws:      {draws} ({draws / total * 100:.2f}%)")
-print(f"Black wins: {black_wins} ({black_wins / total * 100:.2f}%)")
+print(
+    f"Target max:  {targets.max().item():.6f}"
+)
 
 
 #loss function
