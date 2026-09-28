@@ -17,10 +17,11 @@ from find_best_move import find_best_move
 # Einstellungen
 # ============================================================
 
-NUMBER_OF_POSITIONS = 20
+NUMBER_OF_POSITIONS = 100
+
 
 # Deine KI
-DEPTH = 3
+DEPTH = 2
 
 # Stockfish
 STOCKFISH_TIME = 1.0

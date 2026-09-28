@@ -1,142 +1,122 @@
 import torch
-import time
+import chess
 from pathlib import Path
 
-from dataset import ChessDataset
-from config import DATASET_PATH, PGN_PATH, DATASET_CHECKPOINT_PATH
+from datasets import load_dataset
+
+from board_to_tensor import board_to_tensor
+from config import DATASET_CHECKPOINT_PATH, DATASET_PATH
 
 DATASET_CHECKPOINT_PATH = Path(DATASET_CHECKPOINT_PATH)
 DATASET_PATH = Path(DATASET_PATH)
 
-MAX_GAMES = 1000 #processed games
+NUM_POSITIONS = 250_000
+MIN_DEPTH = 18
 
-# how many games should be processed before saving a checkpoint
-CHECKPOINT_EVERY = 25
+def score_to_target(score): #make a readable target out of the score
+    target = torch.tanh(torch.tensor(score / 400.0, dtype=torch.float32))
+    return target
 
-MIN_ELO = 2500
+#loading the lichess dataset
+print("Loading the Lichess dataset...")
 
-
-# Load the previous checkpoint if one exists
-if DATASET_CHECKPOINT_PATH.exists():
-
-    print(
-        f"Loading checkpoint: {DATASET_CHECKPOINT_PATH}"
-    )
-
-    checkpoint = torch.load(
-        DATASET_CHECKPOINT_PATH,
-        map_location="cpu"
-    )
-
-    boards = list(checkpoint["boards"])
-    targets = list(checkpoint["targets"])
-    games_loaded = checkpoint["games_loaded"]
-
-    print(
-        f"Resuming from game {games_loaded}"
-    )
-
-else:
-
-    print("No checkpoint found. Starting from scratch.")
-
-    boards = []
-    targets = []
-
-    games_loaded = 0
-
-
-# create the dataset
-dataset = ChessDataset(
-    pgn_path=PGN_PATH,
-    max_games=MAX_GAMES,
-    min_elo=MIN_ELO,
-    start_game=games_loaded
+dataset = load_dataset(
+    "Lichess/chess-position-evaluations",
+    split="train",
+    streaming=True
 )
 
+print("Dataset loaded")
+print(f"Goal: {NUM_POSITIONS} positions")
+print(f"Minimum stockfish depth: {MIN_DEPTH}")
+print()
 
-start_time = time.time()
+#dataset parameters
+boards = []
+targets = []
 
-new_games = 0
-last_game = None
+checked = 0
+skipped = 0
+duplicates = 0
+seen_fens = set()
 
+#enumerating the dataset
+for position in dataset:
+    checked += 1
 
-# Load the positions and Stockfish evaluations
-for board_tensor, target, game_number in dataset:
+    fen = position.get("fen")
+    if not fen:
+        skipped += 1
+        continue
 
-    # Detect when a new game starts
-    if last_game is None:
+    if fen in seen_fens:
+        duplicates += 1
+        continue
+    seen_fens.add(fen)
 
-        new_games = 1
+    depth = position.get("depth")
+    if depth == None or (depth < MIN_DEPTH):
+        skipped += 1
+        continue
 
-    elif game_number != last_game:
+    score = position.get("cp")
+    if score is None:
+        skipped += 1
+        continue
 
-        new_games += 1
+    #fen to python chess board
+    try:
+        board = chess.Board(fen)
+    except ValueError:
+        skipped += 1
+        continue
 
-        # The previous game is now completely processed
-        # Check if another checkpoint should be create
-        if (
-            new_games - 1 > 0
-            and (new_games - 1) % CHECKPOINT_EVERY == 0
-        ):
+    #board to tensor
+    tensor = board_to_tensor(board)
 
-            print()
-            print("Saving checkpoint...")
+    #target score
+    target = score_to_target(score)
 
-            boards_tensor = torch.stack(boards)
-            targets_tensor = torch.stack(targets)
+    #saving the data
+    boards.append(tensor)
+    targets.append(target) 
 
-            torch.save(
-                {
-                    "boards": boards_tensor,
-                    "targets": targets_tensor,
-                    "games_loaded": last_game
-                },
-                DATASET_CHECKPOINT_PATH
-            )
-
-            print(
-                f"Checkpoint saved after "
-                f"{last_game} games."
-            )
-
-            print()
-
-    # Add the current position
-    boards.append(board_tensor)
-    targets.append(target)
-
-    # Remember the current game
-    last_game = game_number
-
-    # Print progress every 100 positions
-    if len(boards) % 100 == 0:
-
-        elapsed = time.time() - start_time
+    #show progress
+    if len(boards) % 10 == 0:
 
         print(
-            f"Positions: {len(boards)} | "
-            f"New games: {new_games} | "
-            f"Time: {round(elapsed, 2)}s"
+            f"{len(boards):,} / "
+            f"{NUM_POSITIONS:,} Positionen"
         )
 
-# Convert the lists into tensors
+    #breaking out of the loop after enough positions
+    if len(boards) >= NUM_POSITIONS:
+        break
+
+#making tensors out of the lists
 boards = torch.stack(boards)
 targets = torch.stack(targets)
 
+#creating the dataset
+dataset_dict = {"boards": boards,
+                "targets": targets}
 
-# Save the finished dataset
-torch.save(
-    {
-        "boards": boards,
-        "targets": targets
-    },
-    DATASET_PATH
-)
+#saving
+torch.save(dataset_dict,
+           DATASET_PATH)
 
-
+#debug information
 print()
-print("Dataset saved!")
-print(f"Boards:  {boards.shape}")
+print(f"Saved dataset at path {DATASET_PATH}")
+print(f"Boards: {boards.shape}")
 print(f"Targets: {targets.shape}")
-print(f"Path:    {DATASET_PATH}")
+print()
+print("Target statistics:")
+print(f"Mean: {targets.mean().item():.6f}")
+print(f"Std:  {targets.std().item():.6f}")
+print(f"Min:  {targets.min().item():.6f}")
+print(f"Max:  {targets.max().item():.6f}")
+print()
+print(f"Checked entries: {checked}")
+print(f"Skipped entries: {skipped}")
+print(f"Duplicates:      {duplicates:,}")

@@ -2,7 +2,7 @@
 from pathlib import Path
 import torch
 
-from dataset import ChessDataset
+from chess_engine.own_dataset import ChessDataset
 from config import DATASET_PATH, DATASET_CHECKPOINT_PATH
 
 DATASET_CHECKPOINT_PATH = Path(DATASET_CHECKPOINT_PATH)
