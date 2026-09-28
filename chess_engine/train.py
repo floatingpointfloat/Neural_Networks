@@ -3,11 +3,9 @@ from torch.utils.data import DataLoader, TensorDataset
 from pathlib import Path
 
 from model import ChessValueNet
-from config import DATA_PATH
+from config import DATASET_PATH
 
 ALLOW_TRAINING = True
-MAX_GAMES = 10
-MIN_ELO = 2000
 
 BATCH_SIZE = 64
 EPOCHS = 50
@@ -37,7 +35,7 @@ if not ALLOW_TRAINING:
 
 # Load the saved dataset
 data = torch.load(
-    DATA_PATH,
+    DATASET_PATH,
     map_location="cpu"
 )
 

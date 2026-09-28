@@ -14,15 +14,19 @@ STOCKFISH_TIME = 0.1
 
 class ChessDataset(IterableDataset):
 
-    def __init__(self, pgn_path, max_games=None, min_elo=2000):
+    def __init__(self, pgn_path, max_games=None, min_elo=2000, start_game=0):
 
         self.pgn_path = pgn_path
         self.max_games = max_games
         self.min_elo = min_elo
 
+        self.start_game = start_game
+
     def __iter__(self):
 
         games_loaded = 0
+
+        new_games = 0
 
         engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH) #start stockfish
 
@@ -46,13 +50,6 @@ class ChessDataset(IterableDataset):
                         if game is None:
                             break
 
-                        # Break the loop after reaching the maximum number of loaded games
-                        if (
-                            self.max_games is not None
-                            and games_loaded >= self.max_games
-                        ):
-                            break
-
                         headers = game.headers
 
                         # Only use games with the min_elo requirement
@@ -62,7 +59,7 @@ class ChessDataset(IterableDataset):
                                 white_elo = int(headers["WhiteElo"])
                                 black_elo = int(headers["BlackElo"])
 
-                            except:
+                            except (KeyError, ValueError):
                                 continue
 
                             if (
@@ -70,6 +67,21 @@ class ChessDataset(IterableDataset):
                                 or black_elo < self.min_elo
                             ):
                                 continue
+
+                        games_loaded += 1
+
+                        #skip already processed games
+                        if games_loaded <= self.start_game:
+                            continue
+
+                        new_games += 1
+
+                        # Break the loop after reaching the maximum number of loaded games
+                        if (
+                            self.max_games is not None
+                            and new_games > self.max_games
+                        ):
+                            break
 
                         board = game.board()
 
@@ -96,12 +108,11 @@ class ChessDataset(IterableDataset):
 
                                 yield (
                                     tensor,
-                                    target
+                                    target, 
+                                    games_loaded
                                 )
 
                             board.push(move)
-
-                        games_loaded += 1
 
                         if games_loaded % 500 == 0:
                             print(
