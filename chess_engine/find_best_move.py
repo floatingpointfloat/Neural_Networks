@@ -28,7 +28,7 @@ def quiescence_search(board: chess.Board, alpha, beta, is_maximizing, model, dev
             alpha = stand_pat
 
         for move in order_moves(board):
-            if not board.is_capture(move):
+            if not board.is_capture(move) and not board.gives_check(move):
                 continue
 
             board.push(move)
@@ -52,7 +52,7 @@ def quiescence_search(board: chess.Board, alpha, beta, is_maximizing, model, dev
             beta = stand_pat
 
         for move in order_moves(board):
-            if not board.is_capture(move):
+            if not board.is_capture(move) and not board.gives_check(move):
                 continue
 
             board.push(move)
