@@ -10,7 +10,7 @@ from board_to_tensor import board_to_tensor
 from config import STOCKFISH_PATH
 
 ANALYZE_EVERY_NTH_MOVE = 3
-STOCKFISH_TIME = 0.1
+STOCKFISH_TIME = 1
 
 class ChessDataset(IterableDataset):
 
