@@ -8,7 +8,7 @@ from config import DATASET_PATH
 ALLOW_TRAINING = True
 
 BATCH_SIZE = 64
-EPOCHS = 100
+EPOCHS = 200
 
 LEARNING_RATE = 0.0001
 
@@ -138,24 +138,24 @@ for epoch in range(EPOCHS):
         #forward pass
         predictions = model(boards)
 
-        #only for debug
-        with torch.no_grad():
-            if batches % 500 == 0:
-                print(
-                    f"Batch {batches} | "
-                    f"Prediction: mean={predictions.mean().item():.6f}, "
-                    f"std={predictions.std().item():.6f}, "
-                    f"min={predictions.min().item():.6f}, "
-                    f"max={predictions.max().item():.6f}"
-                )
+       ##only for debug
+       #with torch.no_grad():
+       #    if batches % 500 == 0:
+       #        print(
+       #            f"Batch {batches} | "
+       #            f"Prediction: mean={predictions.mean().item():.6f}, "
+       #            f"std={predictions.std().item():.6f}, "
+       #            f"min={predictions.min().item():.6f}, "
+       #            f"max={predictions.max().item():.6f}"
+       #        )
 
-                print(
-                    f"Batch {batches} | "
-                    f"Target:     mean={targets.mean().item():.6f}, "
-                    f"std={targets.std().item():.6f}, "
-                    f"min={targets.min().item():.6f}, "
-                    f"max={targets.max().item():.6f}"
-                )
+       #        print(
+       #            f"Batch {batches} | "
+       #            f"Target:     mean={targets.mean().item():.6f}, "
+       #            f"std={targets.std().item():.6f}, "
+       #            f"min={targets.min().item():.6f}, "
+       #            f"max={targets.max().item():.6f}"
+       #        )
 
         # Remove the unnecessary dimension [64, 1] -> [64]
         predictions = predictions.squeeze(1)
