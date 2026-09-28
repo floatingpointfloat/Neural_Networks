@@ -8,10 +8,10 @@ from config import DATASET_PATH, PGN_PATH, DATASET_CHECKPOINT_PATH
 DATASET_CHECKPOINT_PATH = Path(DATASET_CHECKPOINT_PATH)
 DATASET_PATH = Path(DATASET_PATH)
 
-MAX_GAMES = 200 #processed games
+MAX_GAMES = 110 #processed games
 
 # how many games should be processed before saving a checkpoint
-CHECKPOINT_EVERY = 100
+CHECKPOINT_EVERY = 50
 
 MIN_ELO = 2000
 
@@ -117,7 +117,7 @@ for board_tensor, target, game_number in dataset:
         print(
             f"Positions: {len(boards)} | "
             f"New games: {new_games} | "
-            f"Time: {elapsed}"
+            f"Time: {round(elapsed, 2)}s"
         )
 
 # Convert the lists into tensors
