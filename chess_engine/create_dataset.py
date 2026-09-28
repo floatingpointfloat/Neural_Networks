@@ -8,7 +8,7 @@ from config import DATASET_PATH, PGN_PATH, DATASET_CHECKPOINT_PATH
 DATASET_CHECKPOINT_PATH = Path(DATASET_CHECKPOINT_PATH)
 DATASET_PATH = Path(DATASET_PATH)
 
-MAX_GAMES = 1000 #processed games
+MAX_GAMES = 200 #processed games
 
 # how many games should be processed before saving a checkpoint
 CHECKPOINT_EVERY = 100
@@ -115,7 +115,7 @@ for board_tensor, target, game_number in dataset:
         elapsed = time.time() - start_time
 
         positions_per_second = (
-            100 / elapsed
+            len(boards) / elapsed
             if elapsed > 0
             else 0
         )
@@ -125,7 +125,6 @@ for board_tensor, target, game_number in dataset:
             f"New games: {new_games} | "
             f"Speed: {positions_per_second:.2f} positions/s"
         )
-
 
 # Convert the lists into tensors
 boards = torch.stack(boards)
