@@ -1,10 +1,12 @@
 import chess
 import torch
+import time
 
 from board_to_tensor import board_to_tensor
 
 PIECE_VALUES = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 1000}
-
+TIME_LIMIT = 30 #in seconds
+ 
 def evaluate_board(board: chess.Board, model, device):
     #evaluates a position using the cnn
 
@@ -148,7 +150,9 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
 
         return min_eval
 
-def find_best_move(board: chess.Board, depth, model, device):
+def find_best_move(board: chess.Board, depth, model, device, time_limit=TIME_LIMIT):
+    start_time = time.time()
+    
     best_move = None
 
     if board.turn == chess.WHITE:
