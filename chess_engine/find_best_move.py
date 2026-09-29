@@ -6,6 +6,9 @@ from board_to_tensor import board_to_tensor
 
 PIECE_VALUES = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 1000}
 TIME_LIMIT = 30 #in seconds
+
+class SearchTimeout(Exception):
+    pass
  
 def evaluate_board(board: chess.Board, model, device):
     #evaluates a position using the cnn
@@ -19,8 +22,11 @@ def evaluate_board(board: chess.Board, model, device):
     return value
 
 #check for important remaining moves even if the depth is zero
-def quiescence_search(board: chess.Board, alpha, beta, is_maximizing, model, device):
+def quiescence_search(board: chess.Board, alpha, beta, is_maximizing, model, device, time_limit, start_time):
     stand_pat = evaluate_board(board, model, device)
+
+    if time.time() - start_time >= time_limit:
+        raise SearchTimeout
 
     if is_maximizing:
         if stand_pat >= beta:
@@ -35,7 +41,7 @@ def quiescence_search(board: chess.Board, alpha, beta, is_maximizing, model, dev
 
             board.push(move)
 
-            evaluation = quiescence_search(board, alpha, beta, False, model, device)
+            evaluation = quiescence_search(board, alpha, beta, False, model, device, time_limit, start_time)
 
             board.pop()
 
@@ -59,14 +65,7 @@ def quiescence_search(board: chess.Board, alpha, beta, is_maximizing, model, dev
 
             board.push(move)
 
-            evaluation = quiescence_search(
-                board,
-                alpha,
-                beta,
-                True,
-                model,
-                device
-            )
+            evaluation = quiescence_search(board, alpha, beta, True, model, device, time_limit, start_time)
 
             board.pop()
 
@@ -105,7 +104,10 @@ def order_moves(board:chess.Board):
     return moves 
 
 #minimax search function - alpha beta search tree pruning
-def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device):
+def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device, time_limit, start_time):
+    if time.time() - start_time > time_limit:
+        raise SearchTimeout
+
     if board.is_game_over():
         if board.is_checkmate():
             if board.turn == chess.WHITE:
@@ -116,14 +118,14 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
         return 0.0
 
     if depth == 0:
-        return quiescence_search(board, alpha, beta, is_maximizing, model, device)
+        return quiescence_search(board, alpha, beta, is_maximizing, model, device, time_limit, start_time)
 
     if is_maximizing:
         max_eval = float("-inf")
         for move in order_moves(board):
             board.push(move)
 
-            evaluation = minimax(board, depth - 1, alpha, beta, False, model, device)
+            evaluation = minimax(board, depth - 1, alpha, beta, False, model, device, time_limit, start_time)
 
             board.pop()
 
@@ -141,7 +143,7 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
         for move in order_moves(board):
             board.push(move)
 
-            evaluation = minimax(board, depth - 1, alpha, beta, True, model, device)
+            evaluation = minimax(board, depth - 1, alpha, beta, True, model, device, time_limit, start_time)
 
             board.pop()
 
@@ -153,49 +155,71 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
 
         return min_eval
 
-def find_best_move(board: chess.Board, depth, model, device, time_limit=TIME_LIMIT):
+def find_best_move(board: chess.Board, model, device, time_limit=TIME_LIMIT):
     start_time = time.time()
 
     best_move = None
+    best_value = None
 
-    if board.turn == chess.WHITE:
-        best_value = float("-inf")
-    else:
-        best_value = float("+inf")
+    current_depth = 1
 
-    alpha = float("-inf")
-    beta = float("+inf")
-
-    for move in order_moves(board):
-
-        board.push(move)
-
-        value = minimax(
-            board,
-            depth - 1,
-            alpha,
-            beta,
-            board.turn == chess.BLACK,
-            model,
-            device
-        )
-
-        board.pop()
+    while True:
+        depth_best_move = None
+        depth_completed = True
 
         if board.turn == chess.WHITE:
-
-            if value > best_value:
-                best_value = value
-                best_move = move
-
-            alpha = max(alpha, value)
-
+            depth_best_value = float("-inf")
         else:
+            depth_best_value = float("+inf")
 
-            if value < best_value:
-                best_value = value
-                best_move = move
+        alpha = float("-inf")
+        beta = float("+inf")
 
-            beta = min(beta, value)
+        for move in order_moves(board):
+
+            board.push(move)
+
+            try:
+                value = minimax(
+                board,
+                current_depth - 1,
+                alpha,
+                beta,
+                board.turn == chess.BLACK,
+                model,
+                device,
+                time_limit,
+                start_time
+                )
+            except SearchTimeout:
+                depth_completed = False
+                break
+            finally:
+                board.pop()
+
+            if board.turn == chess.WHITE:
+
+                if value > depth_best_value:
+                    depth_best_value = value
+                    depth_best_move = move
+
+                alpha = max(alpha, value)
+
+            else:
+
+                if value < depth_best_value:
+                    depth_best_value = value
+                    depth_best_move = move
+
+                beta = min(beta, value)
+
+        if depth_completed:
+            best_move = depth_best_move
+            best_value = depth_best_value
+
+        if time.time() - start_time >= time_limit:
+            break
+
+        current_depth += 1
 
     return best_move, best_value
