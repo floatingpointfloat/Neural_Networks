@@ -11,7 +11,7 @@ DATASET_CHECKPOINT_PATH = Path(DATASET_CHECKPOINT_PATH)
 DATASET_PATH = Path(DATASET_PATH)
 
 NUM_POSITIONS = 1_000_000
-MIN_DEPTH = 18
+MIN_DEPTH = 50
 
 def score_to_target(score): #make a readable target out of the score
     target = torch.tanh(torch.tensor(score / 400.0, dtype=torch.float32))
