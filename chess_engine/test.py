@@ -14,7 +14,7 @@ from find_best_move import find_best_move
 # Einstellungen
 # ============================================================
 
-DEPTH = 2
+AI_TIME_LIMIT = 15 #in seconds
 
 BOARD_SIZE = 640
 SQUARE_SIZE = BOARD_SIZE // 8
@@ -174,9 +174,9 @@ def calculate_ai_move():
 
     move, evaluation = find_best_move(
         board.copy(),
-        DEPTH,
         model,
-        device
+        device,
+        time_limit=AI_TIME_LIMIT
     )
 
     ai_result = (
