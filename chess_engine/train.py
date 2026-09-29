@@ -9,7 +9,7 @@ ALLOW_TRAINING = True
 
 BATCH_SIZE = 64
 EPOCHS = 100
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.001
 
 # Path to the checkpoint folder
 CHECKPOINT_DIR = Path(__file__).parent / "checkpoints"

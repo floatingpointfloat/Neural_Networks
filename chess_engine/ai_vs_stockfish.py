@@ -21,10 +21,10 @@ from find_best_move import find_best_move
 NUMBER_OF_POSITIONS = 20
 
 # Zeit, die deine KI pro Stellung suchen darf
-AI_TIME_LIMIT = 15
+AI_TIME_LIMIT = 30
 
 # Stockfish
-STOCKFISH_TIME = 1.0
+STOCKFISH_TIME = 5.0
 
 # Nur Spiele mit ausreichend hoher Elo verwenden
 MIN_ELO = 2000
