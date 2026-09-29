@@ -18,7 +18,7 @@ from find_best_move import find_best_move
 # Einstellungen
 # ============================================================
 
-NUMBER_OF_POSITIONS = 10
+NUMBER_OF_POSITIONS = 20
 
 # Zeit, die deine KI pro Stellung suchen darf
 AI_TIME_LIMIT = 15
