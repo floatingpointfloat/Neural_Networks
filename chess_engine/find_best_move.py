@@ -41,9 +41,10 @@ def quiescence_search(board: chess.Board, alpha, beta, is_maximizing, model, dev
 
             board.push(move)
 
-            evaluation = quiescence_search(board, alpha, beta, False, model, device, time_limit, start_time)
-
-            board.pop()
+            try:
+                evaluation = quiescence_search(board, alpha, beta, False, model, device, time_limit, start_time)
+            finally:
+                board.pop()
 
             if evaluation > alpha:
                 alpha = evaluation
@@ -65,9 +66,10 @@ def quiescence_search(board: chess.Board, alpha, beta, is_maximizing, model, dev
 
             board.push(move)
 
-            evaluation = quiescence_search(board, alpha, beta, True, model, device, time_limit, start_time)
-
-            board.pop()
+            try:
+                evaluation = quiescence_search(board, alpha, beta, True, model, device, time_limit, start_time)
+            finally:
+                board.pop()
 
             if evaluation < beta:
                 beta = evaluation
@@ -125,9 +127,10 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
         for move in order_moves(board):
             board.push(move)
 
-            evaluation = minimax(board, depth - 1, alpha, beta, False, model, device, time_limit, start_time)
-
-            board.pop()
+            try:
+                evaluation = minimax(board, depth - 1, alpha, beta, False, model, device, time_limit, start_time)
+            finally:
+                board.pop()
 
             max_eval = max(max_eval, evaluation)
             alpha = max(alpha, evaluation)
@@ -143,9 +146,10 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
         for move in order_moves(board):
             board.push(move)
 
-            evaluation = minimax(board, depth - 1, alpha, beta, True, model, device, time_limit, start_time)
-
-            board.pop()
+            try:
+                evaluation = minimax(board, depth - 1, alpha, beta, True, model, device, time_limit, start_time)
+            finally:
+                board.pop()
 
             min_eval = min(min_eval, evaluation)
             beta = min(beta, evaluation)

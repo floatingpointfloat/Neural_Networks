@@ -20,9 +20,8 @@ from find_best_move import find_best_move
 
 NUMBER_OF_POSITIONS = 10
 
-# Deine KI
-DEPTH = 3
-print(f"Depth searched: {DEPTH}")
+# Zeit, die deine KI pro Stellung suchen darf
+AI_TIME_LIMIT = 30
 
 # Stockfish
 STOCKFISH_TIME = 1.0
@@ -388,11 +387,17 @@ def main():
             print()
             print("Your AI is thinking...")
 
+            # Die neue KI benutzt Iterative Deepening
+            # und bekommt deshalb ein Zeitlimit statt einer festen Tiefe.
+            #
+            # time_limit= verhindert außerdem,
+            # dass Argumente versehentlich verrutschen.
+
             ai_move, ai_eval = find_best_move(
                 board,
-                DEPTH,
                 model,
-                device
+                device,
+                time_limit=AI_TIME_LIMIT
             )
 
             if ai_move is None:
