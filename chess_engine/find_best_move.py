@@ -1,6 +1,7 @@
 import chess
 import torch
 import time
+from dataclasses import dataclass
 
 from board_to_tensor import board_to_tensor
 
@@ -9,6 +10,12 @@ TIME_LIMIT = 30 #in seconds
 
 class SearchTimeout(Exception):
     pass
+
+@dataclass
+class TTEntry: #transposition table to check for exact same positions
+    depth: int
+    value: float
+    flag: str
  
 def evaluate_board(board: chess.Board, model, device):
     #evaluates a position using the cnn
@@ -106,7 +113,7 @@ def order_moves(board:chess.Board):
     return moves 
 
 #minimax search function - alpha beta search tree pruning
-def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device, time_limit, start_time):
+def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device, time_limit, start_time, transposition_table, search_stats):
     if time.time() - start_time > time_limit:
         raise SearchTimeout
 
@@ -122,13 +129,37 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
     if depth == 0:
         return quiescence_search(board, alpha, beta, is_maximizing, model, device, time_limit, start_time)
 
+    #tt table
+    key = board.fen()
+
+    if key in transposition_table:
+        search_stats["tt_hits"] += 1
+        entry = transposition_table[key]
+
+        if entry.depth >= depth: #only use if the used search was at least as deep as this one
+            if entry.flag == "EXACT":
+                return entry.value
+
+            elif entry.flag == "LOWERBOUND":
+                alpha = max(alpha, entry.value)
+
+            elif entry.flag == "UPPERBOUND":
+                beta = min(beta, entry.value)
+
+            if alpha >= beta:
+                return entry.value
+
+    #save the current alpha and beta for usage in the tt table later on
+    original_alpha = alpha
+    original_beta = beta
+            
     if is_maximizing:
         max_eval = float("-inf")
         for move in order_moves(board):
             board.push(move)
 
             try:
-                evaluation = minimax(board, depth - 1, alpha, beta, False, model, device, time_limit, start_time)
+                evaluation = minimax(board, depth - 1, alpha, beta, False, model, device, time_limit, start_time, transposition_table, search_stats)
             finally:
                 board.pop()
 
@@ -138,7 +169,7 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
             if beta <= alpha:
                 break
 
-        return max_eval
+        value = max_eval
 
     else:
         min_eval = float("+inf")
@@ -147,7 +178,7 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
             board.push(move)
 
             try:
-                evaluation = minimax(board, depth - 1, alpha, beta, True, model, device, time_limit, start_time)
+                evaluation = minimax(board, depth - 1, alpha, beta, True, model, device, time_limit, start_time, transposition_table, search_stats)
             finally:
                 board.pop()
 
@@ -157,7 +188,19 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
             if beta <= alpha:
                 break
 
-        return min_eval
+        value = min_eval
+
+    if value <= original_alpha:
+        flag = "UPPERBOUND"
+    elif value >= original_beta:
+        flag = "LOWERBOUND"
+    else:
+        flag = "EXACT"
+
+    #save result
+    transposition_table[key] = TTEntry(depth=depth, value=value, flag=flag)
+
+    return value
 
 def find_best_move(board: chess.Board, model, device, time_limit=TIME_LIMIT):
     start_time = time.time()
@@ -166,6 +209,9 @@ def find_best_move(board: chess.Board, model, device, time_limit=TIME_LIMIT):
     best_value = None
 
     current_depth = 1
+
+    transposition_table = {}
+    search_stats = {"tt_hits": 0}
 
     while True:
         depth_best_move = None
@@ -193,7 +239,9 @@ def find_best_move(board: chess.Board, model, device, time_limit=TIME_LIMIT):
                 model,
                 device,
                 time_limit,
-                start_time
+                start_time,
+                transposition_table,
+                search_stats
                 )
             except SearchTimeout:
                 depth_completed = False
@@ -226,4 +274,6 @@ def find_best_move(board: chess.Board, model, device, time_limit=TIME_LIMIT):
 
         current_depth += 1
 
+    print(f"TT Entries: {len(transposition_table)}")
+    print(f"TT Hits: {search_stats['tt_hits']}")
     return best_move, best_value
