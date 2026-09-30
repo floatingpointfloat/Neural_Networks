@@ -9,9 +9,9 @@ torch.backends.cudnn.benchmark = True #cuda optimization
 
 ALLOW_TRAINING = True
 
-BATCH_SIZE = 256
+BATCH_SIZE = 128
 EPOCHS = 100
-LEARNING_RATE = 0.0005
+LEARNING_RATE = 0.00001
 
 # Path to the checkpoint folder
 CHECKPOINT_DIR = Path(__file__).parent / "checkpoints"
