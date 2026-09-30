@@ -13,7 +13,6 @@ from model import ChessValueNet
 from board_to_tensor import board_to_tensor
 from find_best_move import find_best_move
 
-
 # ============================================================
 # Einstellungen
 # ============================================================
@@ -29,28 +28,19 @@ STOCKFISH_TIME = 3.0
 # Nur Spiele mit ausreichend hoher Elo verwenden
 MIN_ELO = 2000
 
-MODEL_PATH = (
-    Path(__file__).resolve().parent
-    / "checkpoints"
-    / "best.pt"
-)
+MODEL_PATH = Path(__file__).resolve().parent / "checkpoints" / "best.pt"
 
 
 # ============================================================
 # Gerät
 # ============================================================
 
-device = torch.device(
-    "cuda" if torch.cuda.is_available() else "cpu"
-)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print("Device:", device)
 
 if torch.cuda.is_available():
-    print(
-        "GPU:",
-        torch.cuda.get_device_name(0)
-    )
+    print("GPU:", torch.cuda.get_device_name(0))
 
 
 # ============================================================
@@ -62,14 +52,9 @@ print("Loading model...")
 
 model = ChessValueNet().to(device)
 
-checkpoint = torch.load(
-    MODEL_PATH,
-    map_location=device
-)
+checkpoint = torch.load(MODEL_PATH, map_location=device)
 
-model.load_state_dict(
-    checkpoint["model_state_dict"]
-)
+model.load_state_dict(checkpoint["model_state_dict"])
 
 model.eval()
 
@@ -80,6 +65,7 @@ print("Model loaded.")
 # Direkte Bewertung einer Stellung durch das Netzwerk
 # ============================================================
 
+
 def evaluate_position(board):
 
     tensor = board_to_tensor(board)
@@ -88,9 +74,7 @@ def evaluate_position(board):
 
     with torch.no_grad():
 
-        value = model(
-            tensor
-        ).item()
+        value = model(tensor).item()
 
     return value
 
@@ -99,6 +83,7 @@ def evaluate_position(board):
 # Zufällige Schachpositionen aus PGN laden
 # ============================================================
 
+
 def get_positions(number_of_positions):
 
     positions = []
@@ -106,27 +91,17 @@ def get_positions(number_of_positions):
     print()
     print("Reading PGN...")
 
-    with open(
-        PGN_PATH,
-        "rb"
-    ) as pgn_file:
+    with open(PGN_PATH, "rb") as pgn_file:
 
         dctx = zstd.ZstdDecompressor()
 
-        with dctx.stream_reader(
-            pgn_file
-        ) as reader:
+        with dctx.stream_reader(pgn_file) as reader:
 
-            text_stream = io.TextIOWrapper(
-                reader,
-                encoding="utf-8"
-            )
+            text_stream = io.TextIOWrapper(reader, encoding="utf-8")
 
             while len(positions) < number_of_positions:
 
-                game = chess.pgn.read_game(
-                    text_stream
-                )
+                game = chess.pgn.read_game(text_stream)
 
                 if game is None:
                     break
@@ -139,25 +114,15 @@ def get_positions(number_of_positions):
 
                 try:
 
-                    white_elo = int(
-                        headers["WhiteElo"]
-                    )
+                    white_elo = int(headers["WhiteElo"])
 
-                    black_elo = int(
-                        headers["BlackElo"]
-                    )
+                    black_elo = int(headers["BlackElo"])
 
-                except (
-                    KeyError,
-                    ValueError
-                ):
+                except (KeyError, ValueError):
 
                     continue
 
-                if (
-                    white_elo < MIN_ELO
-                    or black_elo < MIN_ELO
-                ):
+                if white_elo < MIN_ELO or black_elo < MIN_ELO:
 
                     continue
 
@@ -174,9 +139,7 @@ def get_positions(number_of_positions):
                     # Position VOR dem Zug speichern
                     if not board.is_game_over():
 
-                        game_positions.append(
-                            board.fen()
-                        )
+                        game_positions.append(board.fen())
 
                     board.push(move)
 
@@ -187,19 +150,11 @@ def get_positions(number_of_positions):
                 # Zufällige Position aus diesem Spiel
                 # ------------------------------------------------
 
-                fen = random.choice(
-                    game_positions
-                )
+                fen = random.choice(game_positions)
 
-                positions.append(
-                    fen
-                )
+                positions.append(fen)
 
-                print(
-                    f"Loaded position "
-                    f"{len(positions)}/"
-                    f"{number_of_positions}"
-                )
+                print(f"Loaded position " f"{len(positions)}/" f"{number_of_positions}")
 
     return positions
 
@@ -208,21 +163,17 @@ def get_positions(number_of_positions):
 # Stockfish
 # ============================================================
 
+
 def start_stockfish():
 
     print()
     print("Starting Stockfish...")
     print("Path:", STOCKFISH_PATH)
 
-    engine = chess.engine.SimpleEngine.popen_uci(
-        STOCKFISH_PATH
-    )
+    engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
 
     # Nur einen Stockfish-Thread verwenden.
-    engine.configure({
-        "Threads": 1,
-        "Hash": 128
-    })
+    engine.configure({"Threads": 1, "Hash": 128})
 
     print("Stockfish loaded.")
 
@@ -233,27 +184,16 @@ def start_stockfish():
 # Stockfish Analyse
 # ============================================================
 
-def analyze_stockfish(
-    engine,
-    board
-):
 
-    result = engine.analyse(
-        board,
-        chess.engine.Limit(
-            time=STOCKFISH_TIME
-        )
-    )
+def analyze_stockfish(engine, board):
+
+    result = engine.analyse(board, chess.engine.Limit(time=STOCKFISH_TIME))
 
     best_move = result["pv"][0]
 
-    score = result["score"].pov(
-        board.turn
-    )
+    score = result["score"].pov(board.turn)
 
-    score_cp = score.score(
-        mate_score=10000
-    )
+    score_cp = score.score(mate_score=10000)
 
     return best_move, score_cp
 
@@ -262,43 +202,30 @@ def analyze_stockfish(
 # Stockfish Bewertung eines bestimmten Zuges
 # ============================================================
 
-def evaluate_move(
-    engine,
-    board,
-    move
-):
+
+def evaluate_move(engine, board, move):
 
     test_board = board.copy()
 
     test_board.push(move)
 
-    result = engine.analyse(
-        test_board,
-        chess.engine.Limit(
-            time=STOCKFISH_TIME
-        )
-    )
+    result = engine.analyse(test_board, chess.engine.Limit(time=STOCKFISH_TIME))
 
     # Bewertung wieder aus Sicht des Spielers,
     # der den Zug gemacht hat.
-    score = result["score"].pov(
-        board.turn
-    )
+    score = result["score"].pov(board.turn)
 
-    return score.score(
-        mate_score=10000
-    )
+    return score.score(mate_score=10000)
 
 
 # ============================================================
 # Hauptprogramm
 # ============================================================
 
+
 def main():
 
-    positions = get_positions(
-        NUMBER_OF_POSITIONS
-    )
+    positions = get_positions(NUMBER_OF_POSITIONS)
 
     if not positions:
 
@@ -330,17 +257,11 @@ def main():
         print("STARTING TEST")
         print("=" * 60)
 
-        for index, fen in enumerate(
-            positions,
-            start=1
-        ):
+        for index, fen in enumerate(positions, start=1):
 
             print()
             print("=" * 60)
-            print(
-                f"Position {index}/"
-                f"{len(positions)}"
-            )
+            print(f"Position {index}/" f"{len(positions)}")
             print("=" * 60)
 
             board = chess.Board(fen)
@@ -349,36 +270,20 @@ def main():
             print(board)
             print()
 
-            print(
-                "FEN:",
-                fen
-            )
+            print("FEN:", fen)
 
-            print(
-                "Side to move:",
-                "White"
-                if board.turn == chess.WHITE
-                else "Black"
-            )
+            print("Side to move:", "White" if board.turn == chess.WHITE else "Black")
 
             # ====================================================
             # Direkte NN-Bewertung der Ausgangsstellung
             # ====================================================
 
             print()
-            print(
-                "Neural network is "
-                "evaluating position..."
-            )
+            print("Neural network is " "evaluating position...")
 
-            nn_before = evaluate_position(
-                board
-            )
+            nn_before = evaluate_position(board)
 
-            print(
-                f"NN evaluation before move: "
-                f"{nn_before:+.6f}"
-            )
+            print(f"NN evaluation before move: " f"{nn_before:+.6f}")
 
             # ====================================================
             # KI
@@ -394,38 +299,22 @@ def main():
             # dass Argumente versehentlich verrutschen.
 
             ai_move, ai_eval = find_best_move(
-                board,
-                model,
-                device,
-                time_limit=AI_TIME_LIMIT
+                board, model, device, time_limit=AI_TIME_LIMIT
             )
 
             if ai_move is None:
 
-                print(
-                    "AI has no legal move."
-                )
+                print("AI has no legal move.")
 
                 continue
 
-            ai_san = board.san(
-                ai_move
-            )
+            ai_san = board.san(ai_move)
 
-            print(
-                "AI move:",
-                ai_san
-            )
+            print("AI move:", ai_san)
 
-            print(
-                "AI UCI:",
-                ai_move
-            )
+            print("AI UCI:", ai_move)
 
-            print(
-                f"AI search evaluation: "
-                f"{ai_eval:+.6f}"
-            )
+            print(f"AI search evaluation: " f"{ai_eval:+.6f}")
 
             # ====================================================
             # Direkte NN-Bewertung NACH dem AI-Zug
@@ -433,152 +322,92 @@ def main():
 
             ai_board = board.copy()
 
-            ai_board.push(
-                ai_move
-            )
+            ai_board.push(ai_move)
 
-            nn_after = evaluate_position(
-                ai_board
-            )
+            nn_after = evaluate_position(ai_board)
 
-            print(
-                f"NN evaluation after AI move: "
-                f"{nn_after:+.6f}"
-            )
+            print(f"NN evaluation after AI move: " f"{nn_after:+.6f}")
 
             # ====================================================
             # Stockfish
             # ====================================================
 
             print()
-            print(
-                "Stockfish is thinking..."
-            )
+            print("Stockfish is thinking...")
 
             try:
 
-                sf_move, sf_score = (
-                    analyze_stockfish(
-                        engine,
-                        board
-                    )
-                )
+                sf_move, sf_score = analyze_stockfish(engine, board)
 
             except Exception as error:
 
                 print()
-                print(
-                    "Stockfish failed:"
-                )
+                print("Stockfish failed:")
 
-                print(
-                    repr(error)
-                )
+                print(repr(error))
 
                 print()
-                print(
-                    "Skipping this position..."
-                )
+                print("Skipping this position...")
 
                 continue
 
-            sf_san = board.san(
-                sf_move
-            )
+            sf_san = board.san(sf_move)
 
-            print(
-                "Stockfish move:",
-                sf_san
-            )
+            print("Stockfish move:", sf_san)
 
-            print(
-                "Stockfish UCI:",
-                sf_move
-            )
+            print("Stockfish UCI:", sf_move)
 
-            print(
-                f"Stockfish evaluation: "
-                f"{sf_score / 100:+.2f}"
-            )
+            print(f"Stockfish evaluation: " f"{sf_score / 100:+.2f}")
 
             # ====================================================
             # Vergleich der Züge
             # ====================================================
 
-            same_move = (
-                ai_move == sf_move
-            )
+            same_move = ai_move == sf_move
 
             if same_move:
 
                 same_move_count += 1
 
                 print()
-                print(
-                    "MATCH: AI found the "
-                    "same move as Stockfish!"
-                )
+                print("MATCH: AI found the " "same move as Stockfish!")
 
             else:
 
                 print()
-                print(
-                    "DIFFERENT MOVE"
-                )
+                print("DIFFERENT MOVE")
 
             # ====================================================
             # Stockfish bewertet KI-Zug
             # ====================================================
 
             print()
-            print(
-                "Evaluating AI move "
-                "with Stockfish..."
-            )
+            print("Evaluating AI move " "with Stockfish...")
 
             try:
 
-                ai_move_score = (
-                    evaluate_move(
-                        engine,
-                        board,
-                        ai_move
-                    )
-                )
+                ai_move_score = evaluate_move(engine, board, ai_move)
 
             except Exception as error:
 
-                print(
-                    "Could not evaluate "
-                    "AI move:"
-                )
+                print("Could not evaluate " "AI move:")
 
-                print(
-                    repr(error)
-                )
+                print(repr(error))
 
                 continue
 
             print(
-                f"Stockfish evaluation "
-                f"of AI move: "
-                f"{ai_move_score / 100:+.2f}"
+                f"Stockfish evaluation " f"of AI move: " f"{ai_move_score / 100:+.2f}"
             )
 
             # ====================================================
             # Centipawn Loss
             # ====================================================
 
-            cpl = (
-                sf_score
-                - ai_move_score
-            )
+            cpl = sf_score - ai_move_score
 
             # Keine negativen Werte
-            cpl = max(
-                0,
-                cpl
-            )
+            cpl = max(0, cpl)
 
             total_cpl += cpl
 
@@ -588,53 +417,28 @@ def main():
 
             successful_tests += 1
 
-            print(
-                f"Centipawn loss: "
-                f"{cpl:.1f}"
-            )
+            print(f"Centipawn loss: " f"{cpl:.1f}")
 
             # ====================================================
             # Zusammenfassung dieser Position
             # ====================================================
 
             print()
-            print(
-                "-" * 60
-            )
+            print("-" * 60)
 
-            print(
-                "POSITION SUMMARY"
-            )
+            print("POSITION SUMMARY")
 
-            print(
-                f"NN before move:       "
-                f"{nn_before:+.6f}"
-            )
+            print(f"NN before move:       " f"{nn_before:+.6f}")
 
-            print(
-                f"NN search evaluation: "
-                f"{ai_eval:+.6f}"
-            )
+            print(f"NN search evaluation: " f"{ai_eval:+.6f}")
 
-            print(
-                f"NN after AI move:     "
-                f"{nn_after:+.6f}"
-            )
+            print(f"NN after AI move:     " f"{nn_after:+.6f}")
 
-            print(
-                f"Stockfish best move:  "
-                f"{sf_score / 100:+.2f}"
-            )
+            print(f"Stockfish best move:  " f"{sf_score / 100:+.2f}")
 
-            print(
-                f"Stockfish AI move:    "
-                f"{ai_move_score / 100:+.2f}"
-            )
+            print(f"Stockfish AI move:    " f"{ai_move_score / 100:+.2f}")
 
-            print(
-                f"CPL:                  "
-                f"{cpl:.1f}"
-            )
+            print(f"CPL:                  " f"{cpl:.1f}")
 
         # ========================================================
         # Gesamtergebnis
@@ -646,79 +450,42 @@ def main():
         print("RESULT")
         print("=" * 60)
 
-        print(
-            "Positions tested:",
-            successful_tests
-        )
+        print("Positions tested:", successful_tests)
 
         if successful_tests > 0:
 
-            percentage = (
-                same_move_count
-                / successful_tests
-                * 100
-            )
+            percentage = same_move_count / successful_tests * 100
 
-            average_cpl = (
-                total_cpl
-                / successful_tests
-            )
+            average_cpl = total_cpl / successful_tests
 
-            average_nn_before = (
-                total_nn_before
-                / successful_tests
-            )
+            average_nn_before = total_nn_before / successful_tests
 
-            average_nn_after = (
-                total_nn_after
-                / successful_tests
-            )
+            average_nn_after = total_nn_after / successful_tests
 
             print()
             print(
-                "Same move as Stockfish:",
-                f"{same_move_count}"
-                f"/{successful_tests}"
+                "Same move as Stockfish:", f"{same_move_count}" f"/{successful_tests}"
             )
 
-            print(
-                "Same move percentage:",
-                f"{percentage:.1f}%"
-            )
+            print("Same move percentage:", f"{percentage:.1f}%")
 
-            print(
-                "Average centipawn loss:",
-                f"{average_cpl:.1f}"
-            )
+            print("Average centipawn loss:", f"{average_cpl:.1f}")
 
             print()
-            print(
-                "Average NN evaluation "
-                "before move:",
-                f"{average_nn_before:+.6f}"
-            )
+            print("Average NN evaluation " "before move:", f"{average_nn_before:+.6f}")
 
-            print(
-                "Average NN evaluation "
-                "after AI move:",
-                f"{average_nn_after:+.6f}"
-            )
+            print("Average NN evaluation " "after AI move:", f"{average_nn_after:+.6f}")
 
         else:
 
-            print(
-                "No successful Stockfish "
-                "analyses."
-            )
+            print("No successful Stockfish " "analyses.")
 
     finally:
 
         if engine is not None:
 
             print()
-            print(
-                "Closing Stockfish..."
-            )
+            print("Closing Stockfish...")
 
             try:
 
@@ -728,9 +495,7 @@ def main():
 
                 pass
 
-            print(
-                "Stockfish closed."
-            )
+            print("Stockfish closed.")
 
 
 # ============================================================
