@@ -52,13 +52,14 @@ def quiescence_search(
     start_time,
     q_depth=0,
 ):
-    if q_depth >= MAX_QUIESCENCE_DEPTH:
-        return evaluate_board(board, model, device)
-
-    stand_pat = evaluate_board(board, model, device)
 
     if time.time() - start_time >= time_limit:
         raise SearchTimeout
+
+    stand_pat = evaluate_board(board, model, device)
+
+    if q_depth >= MAX_QUIESCENCE_DEPTH:
+        return stand_pat
 
     if is_maximizing:
         if stand_pat >= beta:
