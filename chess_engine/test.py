@@ -9,12 +9,11 @@ import threading
 from model import ChessValueNet
 from find_best_move import find_best_move
 
-
 # ============================================================
 # Einstellungen
 # ============================================================
 
-AI_TIME_LIMIT = 15 #in seconds
+AI_TIME_LIMIT = 5  # in seconds
 
 BOARD_SIZE = 640
 SQUARE_SIZE = BOARD_SIZE // 8
@@ -46,9 +45,7 @@ TEXT_COLOR = (255, 255, 255)
 # Gerät
 # ============================================================
 
-device = torch.device(
-    "cuda" if torch.cuda.is_available() else "cpu"
-)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print("Device:", device)
 
@@ -62,14 +59,9 @@ if device.type == "cuda":
 
 model = ChessValueNet().to(device)
 
-checkpoint = torch.load(
-    MODEL_PATH,
-    map_location=device
-)
+checkpoint = torch.load(MODEL_PATH, map_location=device)
 
-model.load_state_dict(
-    checkpoint["model_state_dict"]
-)
+model.load_state_dict(checkpoint["model_state_dict"])
 
 model.eval()
 
@@ -82,27 +74,16 @@ print("Model loaded.")
 
 pygame.init()
 
-screen = pygame.display.set_mode(
-    (BOARD_SIZE, BOARD_SIZE)
-)
+screen = pygame.display.set_mode((BOARD_SIZE, BOARD_SIZE))
 
-pygame.display.set_caption(
-    "Chess Engine"
-)
+pygame.display.set_caption("Chess Engine")
 
 
 # Figuren-Font
-font = pygame.font.SysFont(
-    "segoeuisymbol",
-    64
-)
+font = pygame.font.SysFont("segoeuisymbol", 64)
 
 # Status-Font
-status_font = pygame.font.SysFont(
-    "arial",
-    24,
-    bold=True
-)
+status_font = pygame.font.SysFont("arial", 24, bold=True)
 
 
 # ============================================================
@@ -143,14 +124,12 @@ ai_thread = None
 # ============================================================
 
 pieces = {
-
     "P": "♙",
     "N": "♘",
     "B": "♗",
     "R": "♖",
     "Q": "♕",
     "K": "♔",
-
     "p": "♟",
     "n": "♞",
     "b": "♝",
@@ -164,6 +143,7 @@ pieces = {
 # KI-Funktion
 # ============================================================
 
+
 def calculate_ai_move():
 
     global ai_result
@@ -173,16 +153,10 @@ def calculate_ai_move():
     print("AI thinking...")
 
     move, evaluation = find_best_move(
-        board.copy(),
-        model,
-        device,
-        time_limit=AI_TIME_LIMIT
+        board.copy(), model, device, time_limit=AI_TIME_LIMIT
     )
 
-    ai_result = (
-        move,
-        evaluation
-    )
+    ai_result = (move, evaluation)
 
     ai_thinking = False
 
@@ -190,6 +164,7 @@ def calculate_ai_move():
 # ============================================================
 # Brett zeichnen
 # ============================================================
+
 
 def draw_board():
 
@@ -209,66 +184,38 @@ def draw_board():
             x = col * SQUARE_SIZE
             y = row * SQUARE_SIZE
 
-            pygame.draw.rect(
-                screen,
-                color,
-                (
-                    x,
-                    y,
-                    SQUARE_SIZE,
-                    SQUARE_SIZE
-                )
-            )
+            pygame.draw.rect(screen, color, (x, y, SQUARE_SIZE, SQUARE_SIZE))
 
             # ------------------------------------------------
             # Schachfeld
             # ------------------------------------------------
 
-            square = chess.square(
-                col,
-                7 - row
-            )
+            square = chess.square(col, 7 - row)
 
             # ------------------------------------------------
             # Spielerzug markieren
             # ------------------------------------------------
 
-            if (
-                square == player_move_from
-                or square == player_move_to
-            ):
+            if square == player_move_from or square == player_move_to:
 
                 pygame.draw.rect(
                     screen,
                     PLAYER_MOVE_COLOR,
-                    (
-                        x + 4,
-                        y + 4,
-                        SQUARE_SIZE - 8,
-                        SQUARE_SIZE - 8
-                    ),
-                    6
+                    (x + 4, y + 4, SQUARE_SIZE - 8, SQUARE_SIZE - 8),
+                    6,
                 )
 
             # ------------------------------------------------
             # KI-Zug markieren
             # ------------------------------------------------
 
-            if (
-                square == ai_move_from
-                or square == ai_move_to
-            ):
+            if square == ai_move_from or square == ai_move_to:
 
                 pygame.draw.rect(
                     screen,
                     AI_MOVE_COLOR,
-                    (
-                        x + 4,
-                        y + 4,
-                        SQUARE_SIZE - 8,
-                        SQUARE_SIZE - 8
-                    ),
-                    6
+                    (x + 4, y + 4, SQUARE_SIZE - 8, SQUARE_SIZE - 8),
+                    6,
                 )
 
             # ------------------------------------------------
@@ -277,17 +224,7 @@ def draw_board():
 
             if square == selected_square:
 
-                pygame.draw.rect(
-                    screen,
-                    HIGHLIGHT,
-                    (
-                        x,
-                        y,
-                        SQUARE_SIZE,
-                        SQUARE_SIZE
-                    ),
-                    5
-                )
+                pygame.draw.rect(screen, HIGHLIGHT, (x, y, SQUARE_SIZE, SQUARE_SIZE), 5)
 
             # ------------------------------------------------
             # Figur zeichnen
@@ -297,27 +234,15 @@ def draw_board():
 
             if piece is not None:
 
-                symbol = pieces[
-                    piece.symbol()
-                ]
+                symbol = pieces[piece.symbol()]
 
-                text = font.render(
-                    symbol,
-                    True,
-                    (0, 0, 0)
-                )
+                text = font.render(symbol, True, (0, 0, 0))
 
                 rect = text.get_rect(
-                    center=(
-                        x + SQUARE_SIZE // 2,
-                        y + SQUARE_SIZE // 2
-                    )
+                    center=(x + SQUARE_SIZE // 2, y + SQUARE_SIZE // 2)
                 )
 
-                screen.blit(
-                    text,
-                    rect
-                )
+                screen.blit(text, rect)
 
     # ========================================================
     # Status anzeigen
@@ -327,35 +252,21 @@ def draw_board():
 
         status = "AI denkt..."
 
-        text = status_font.render(
-            status,
-            True,
-            TEXT_COLOR
-        )
+        text = status_font.render(status, True, TEXT_COLOR)
 
-        background = pygame.Surface(
-            (
-                text.get_width() + 20,
-                text.get_height() + 10
-            )
-        )
+        background = pygame.Surface((text.get_width() + 20, text.get_height() + 10))
 
         background.set_alpha(180)
 
-        screen.blit(
-            background,
-            (10, 10)
-        )
+        screen.blit(background, (10, 10))
 
-        screen.blit(
-            text,
-            (20, 15)
-        )
+        screen.blit(text, (20, 15))
 
 
 # ============================================================
 # Mausposition -> Schachfeld
 # ============================================================
+
 
 def get_square_from_mouse(position):
 
@@ -370,10 +281,7 @@ def get_square_from_mouse(position):
     if not (0 <= row < 8):
         return None
 
-    return chess.square(
-        col,
-        7 - row
-    )
+    return chess.square(col, 7 - row)
 
 
 # ============================================================
@@ -423,9 +331,7 @@ while running:
             if board.is_game_over():
                 continue
 
-            square = get_square_from_mouse(
-                event.pos
-            )
+            square = get_square_from_mouse(event.pos)
 
             if square is None:
                 continue
@@ -436,14 +342,9 @@ while running:
 
             if selected_square is None:
 
-                piece = board.piece_at(
-                    square
-                )
+                piece = board.piece_at(square)
 
-                if (
-                    piece is not None
-                    and piece.color == chess.WHITE
-                ):
+                if piece is not None and piece.color == chess.WHITE:
 
                     selected_square = square
 
@@ -453,18 +354,13 @@ while running:
 
             else:
 
-                move = chess.Move(
-                    selected_square,
-                    square
-                )
+                move = chess.Move(selected_square, square)
 
                 # ------------------------------------------------
                 # Bauern automatisch zur Dame
                 # ------------------------------------------------
 
-                piece = board.piece_at(
-                    selected_square
-                )
+                piece = board.piece_at(selected_square)
 
                 if (
                     piece is not None
@@ -472,11 +368,7 @@ while running:
                     and chess.square_rank(square) == 7
                 ):
 
-                    move = chess.Move(
-                        selected_square,
-                        square,
-                        promotion=chess.QUEEN
-                    )
+                    move = chess.Move(selected_square, square, promotion=chess.QUEEN)
 
                 # ------------------------------------------------
                 # Zug ausführen
@@ -484,10 +376,7 @@ while running:
 
                 if move in board.legal_moves:
 
-                    print(
-                        "You:",
-                        board.san(move)
-                    )
+                    print("You:", board.san(move))
 
                     # --------------------------------------------
                     # Alten KI-Zug löschen
@@ -523,10 +412,7 @@ while running:
                     # KI in eigenem Thread starten
                     # --------------------------------------------
 
-                    ai_thread = threading.Thread(
-                        target=calculate_ai_move,
-                        daemon=True
-                    )
+                    ai_thread = threading.Thread(target=calculate_ai_move, daemon=True)
 
                     ai_thread.start()
 
@@ -534,7 +420,6 @@ while running:
 
                     # Ungültiger Zug
                     selected_square = None
-
 
     # ========================================================
     # Ergebnis der KI überprüfen
@@ -553,11 +438,7 @@ while running:
 
         if move is not None:
 
-            print(
-                "AI:",
-                board.san(move),
-                f"({evaluation:+.4f})"
-            )
+            print("AI:", board.san(move), f"({evaluation:+.4f})")
 
             # ------------------------------------------------
             # KI-Zug markieren
@@ -574,10 +455,7 @@ while running:
 
         else:
 
-            print(
-                "AI could not find a move."
-            )
-
+            print("AI could not find a move.")
 
     # ========================================================
     # Zeichnen
