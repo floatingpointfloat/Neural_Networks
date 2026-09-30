@@ -14,6 +14,7 @@ PIECE_VALUES = {
     chess.KING: 1000,
 }
 TIME_LIMIT = 30  # in seconds
+MAX_QUIESCENCE_DEPTH = 3
 
 
 class SearchTimeout(Exception):
@@ -49,7 +50,11 @@ def quiescence_search(
     device,
     time_limit,
     start_time,
+    q_depth=0,
 ):
+    if q_depth >= MAX_QUIESCENCE_DEPTH:
+        return evaluate_board(board, model, device)
+
     stand_pat = evaluate_board(board, model, device)
 
     if time.time() - start_time >= time_limit:
@@ -70,7 +75,15 @@ def quiescence_search(
 
             try:
                 evaluation = quiescence_search(
-                    board, alpha, beta, False, model, device, time_limit, start_time
+                    board,
+                    alpha,
+                    beta,
+                    False,
+                    model,
+                    device,
+                    time_limit,
+                    start_time,
+                    q_depth + 1,
                 )
             finally:
                 board.pop()
@@ -97,7 +110,15 @@ def quiescence_search(
 
             try:
                 evaluation = quiescence_search(
-                    board, alpha, beta, True, model, device, time_limit, start_time
+                    board,
+                    alpha,
+                    beta,
+                    True,
+                    model,
+                    device,
+                    time_limit,
+                    start_time,
+                    q_depth + 1,
                 )
             finally:
                 board.pop()

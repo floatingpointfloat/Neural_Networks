@@ -13,7 +13,7 @@ from find_best_move import find_best_move
 # Einstellungen
 # ============================================================
 
-AI_TIME_LIMIT = 5  # in seconds
+AI_TIME_LIMIT = 15  # in seconds
 
 BOARD_SIZE = 640
 SQUARE_SIZE = BOARD_SIZE // 8
