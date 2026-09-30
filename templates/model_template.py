@@ -7,8 +7,8 @@ class SimpleValueNet(nn.Module):
     def __init__(
         self,
         input_channels,
-        board_height,
-        board_width,
+        input_height,
+        input_width,
         hidden_size=256
     ):
         super(SimpleValueNet, self).__init__()
@@ -16,7 +16,7 @@ class SimpleValueNet(nn.Module):
         self.fully_connected = nn.Sequential(
             nn.Flatten(),
             nn.Linear(
-                input_channels * board_height * board_width,
+                input_channels * input_height * input_width,
                 hidden_size
             ),
             nn.ReLU(),
@@ -34,8 +34,8 @@ class CNNValueNet(nn.Module):
     def __init__(
         self,
         input_channels,
-        board_height,
-        board_width,
+        input_height,
+        input_width,
         channels=128,
         hidden_size=256,
         dropout=0.3
@@ -71,7 +71,7 @@ class CNNValueNet(nn.Module):
         self.fully_connected = nn.Sequential(
             nn.Flatten(),
             nn.Linear(
-                channels * board_height * board_width,
+                channels * input_height * input_width,
                 hidden_size
             ),
             nn.ReLU(),
@@ -125,8 +125,8 @@ class CNNResNetValueNet(nn.Module):
     def __init__(
         self,
         input_channels,
-        board_height,
-        board_width,
+        input_height,
+        input_width,
         channels=128,
         hidden_size=256,
         resblocks=5,
@@ -164,7 +164,7 @@ class CNNResNetValueNet(nn.Module):
         self.fully_connected = nn.Sequential(
             nn.Flatten(),
             nn.Linear(
-                channels * board_height * board_width,
+                channels * input_height * input_width,
                 hidden_size
             ),
             nn.ReLU(),
