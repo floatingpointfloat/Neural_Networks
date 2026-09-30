@@ -21,7 +21,7 @@ from find_best_move import find_best_move
 NUMBER_OF_POSITIONS = 20
 
 # Zeit, die deine KI pro Stellung suchen darf
-AI_TIME_LIMIT = 10
+AI_TIME_LIMIT = 15
 
 # Stockfish
 STOCKFISH_TIME = 3.0
