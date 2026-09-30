@@ -12,6 +12,7 @@ from config import STOCKFISH_PATH
 ANALYZE_EVERY_NTH_MOVE = 3
 STOCKFISH_TIME = 1
 
+
 class ChessDataset(IterableDataset):
 
     def __init__(self, pgn_path, max_games=None, min_elo=2000, start_game=0):
@@ -28,9 +29,9 @@ class ChessDataset(IterableDataset):
 
         new_games = 0
 
-        engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH) #start stockfish
+        engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)  # start stockfish
 
-        try: 
+        try:
             with open(self.pgn_path, "rb") as lichess_games:
 
                 dctx = zstd.ZstdDecompressor()
@@ -38,10 +39,7 @@ class ChessDataset(IterableDataset):
                 # loading the compressed lichess games over zstd
                 with dctx.stream_reader(lichess_games) as reader:
 
-                    text_stream = io.TextIOWrapper(
-                        reader,
-                        encoding="utf-8"
-                    )
+                    text_stream = io.TextIOWrapper(reader, encoding="utf-8")
 
                     while True:
 
@@ -62,25 +60,19 @@ class ChessDataset(IterableDataset):
                             except (KeyError, ValueError):
                                 continue
 
-                            if (
-                                white_elo < self.min_elo
-                                or black_elo < self.min_elo
-                            ):
+                            if white_elo < self.min_elo or black_elo < self.min_elo:
                                 continue
 
                         games_loaded += 1
 
-                        #skip already processed games
+                        # skip already processed games
                         if games_loaded <= self.start_game:
                             continue
 
                         new_games += 1
 
                         # Break the loop after reaching the maximum number of loaded games
-                        if (
-                            self.max_games is not None
-                            and new_games > self.max_games
-                        ):
+                        if self.max_games is not None and new_games > self.max_games:
                             break
 
                         board = game.board()
@@ -91,33 +83,28 @@ class ChessDataset(IterableDataset):
                                 tensor = board_to_tensor(board)
 
                                 analysis = engine.analyse(
-                                    board,
-                                    chess.engine.Limit(time=STOCKFISH_TIME)
+                                    board, chess.engine.Limit(time=STOCKFISH_TIME)
                                 )
 
-                                score = analysis["score"].white().score(mate_score=10000)
+                                score = (
+                                    analysis["score"].white().score(mate_score=10000)
+                                )
 
                                 target = torch.tanh(
                                     torch.tensor(score / 400.0, dtype=torch.float32)
                                 )
 
-                               #print(
-                               #f"Stockfish: {score:>6} cp | "
-                               #f"Target: {target.item():+.4f}"
-                               #)
+                                # print(
+                                # f"Stockfish: {score:>6} cp | "
+                                # f"Target: {target.item():+.4f}"
+                                # )
 
-                                yield (
-                                    tensor,
-                                    target, 
-                                    games_loaded
-                                )
+                                yield (tensor, target, games_loaded)
 
                             board.push(move)
 
                         if games_loaded % 500 == 0:
-                            print(
-                                f"Loaded {games_loaded} games"
-                            )
+                            print(f"Loaded {games_loaded} games")
         finally:
-            #close stockfish
+            # close stockfish
             engine.quit()

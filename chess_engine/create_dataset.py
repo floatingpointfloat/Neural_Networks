@@ -13,17 +13,17 @@ DATASET_PATH = Path(DATASET_PATH)
 NUM_POSITIONS = 1_000_000
 MIN_DEPTH = 50
 
-def score_to_target(score): #make a readable target out of the score
+
+def score_to_target(score):  # make a readable target out of the score
     target = torch.tanh(torch.tensor(score / 400.0, dtype=torch.float32))
     return target
 
-#loading the lichess dataset
+
+# loading the lichess dataset
 print("Loading the Lichess dataset...")
 
 dataset = load_dataset(
-    "Lichess/chess-position-evaluations",
-    split="train",
-    streaming=True
+    "Lichess/chess-position-evaluations", split="train", streaming=True
 )
 
 print("Dataset loaded")
@@ -31,7 +31,7 @@ print(f"Goal: {NUM_POSITIONS} positions")
 print(f"Minimum stockfish depth: {MIN_DEPTH}")
 print()
 
-#dataset parameters
+# dataset parameters
 boards = []
 targets = []
 
@@ -40,7 +40,7 @@ skipped = 0
 duplicates = 0
 seen_fens = set()
 
-#enumerating the dataset
+# enumerating the dataset
 for position in dataset:
     checked += 1
 
@@ -64,48 +64,43 @@ for position in dataset:
         skipped += 1
         continue
 
-    #fen to python chess board
+    # fen to python chess board
     try:
         board = chess.Board(fen)
     except ValueError:
         skipped += 1
         continue
 
-    #board to tensor
+    # board to tensor
     tensor = board_to_tensor(board)
 
-    #target score
+    # target score
     target = score_to_target(score)
 
-    #saving the data
+    # saving the data
     boards.append(tensor)
-    targets.append(target) 
+    targets.append(target)
 
-    #show progress
+    # show progress
     if len(boards) % 10 == 0:
 
-        print(
-            f"{len(boards):,} / "
-            f"{NUM_POSITIONS:,} positions"
-        )
+        print(f"{len(boards):,} / " f"{NUM_POSITIONS:,} positions")
 
-    #breaking out of the loop after enough positions
+    # breaking out of the loop after enough positions
     if len(boards) >= NUM_POSITIONS:
         break
 
-#making tensors out of the lists
+# making tensors out of the lists
 boards = torch.stack(boards)
 targets = torch.stack(targets)
 
-#creating the dataset
-dataset_dict = {"boards": boards,
-                "targets": targets}
+# creating the dataset
+dataset_dict = {"boards": boards, "targets": targets}
 
-#saving
-torch.save(dataset_dict,
-           DATASET_PATH)
+# saving
+torch.save(dataset_dict, DATASET_PATH)
 
-#debug information
+# debug information
 print()
 print(f"Saved dataset at path {DATASET_PATH}")
 print(f"Boards: {boards.shape}")

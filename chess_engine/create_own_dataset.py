@@ -8,7 +8,7 @@ from config import DATASET_PATH, PGN_PATH, DATASET_CHECKPOINT_PATH
 DATASET_CHECKPOINT_PATH = Path(DATASET_CHECKPOINT_PATH)
 DATASET_PATH = Path(DATASET_PATH)
 
-MAX_GAMES = 1000 #processed games
+MAX_GAMES = 1000  # processed games
 
 # how many games should be processed before saving a checkpoint
 CHECKPOINT_EVERY = 25
@@ -19,22 +19,15 @@ MIN_ELO = 2500
 # Load the previous checkpoint if one exists
 if DATASET_CHECKPOINT_PATH.exists():
 
-    print(
-        f"Loading checkpoint: {DATASET_CHECKPOINT_PATH}"
-    )
+    print(f"Loading checkpoint: {DATASET_CHECKPOINT_PATH}")
 
-    checkpoint = torch.load(
-        DATASET_CHECKPOINT_PATH,
-        map_location="cpu"
-    )
+    checkpoint = torch.load(DATASET_CHECKPOINT_PATH, map_location="cpu")
 
     boards = list(checkpoint["boards"])
     targets = list(checkpoint["targets"])
     games_loaded = checkpoint["games_loaded"]
 
-    print(
-        f"Resuming from game {games_loaded}"
-    )
+    print(f"Resuming from game {games_loaded}")
 
 else:
 
@@ -48,10 +41,7 @@ else:
 
 # create the dataset
 dataset = ChessDataset(
-    pgn_path=PGN_PATH,
-    max_games=MAX_GAMES,
-    min_elo=MIN_ELO,
-    start_game=games_loaded
+    pgn_path=PGN_PATH, max_games=MAX_GAMES, min_elo=MIN_ELO, start_game=games_loaded
 )
 
 
@@ -75,10 +65,7 @@ for board_tensor, target, game_number in dataset:
 
         # The previous game is now completely processed
         # Check if another checkpoint should be create
-        if (
-            new_games - 1 > 0
-            and (new_games - 1) % CHECKPOINT_EVERY == 0
-        ):
+        if new_games - 1 > 0 and (new_games - 1) % CHECKPOINT_EVERY == 0:
 
             print()
             print("Saving checkpoint...")
@@ -90,15 +77,12 @@ for board_tensor, target, game_number in dataset:
                 {
                     "boards": boards_tensor,
                     "targets": targets_tensor,
-                    "games_loaded": last_game
+                    "games_loaded": last_game,
                 },
-                DATASET_CHECKPOINT_PATH
+                DATASET_CHECKPOINT_PATH,
             )
 
-            print(
-                f"Checkpoint saved after "
-                f"{last_game} games."
-            )
+            print(f"Checkpoint saved after " f"{last_game} games.")
 
             print()
 
@@ -126,13 +110,7 @@ targets = torch.stack(targets)
 
 
 # Save the finished dataset
-torch.save(
-    {
-        "boards": boards,
-        "targets": targets
-    },
-    DATASET_PATH
-)
+torch.save({"boards": boards, "targets": targets}, DATASET_PATH)
 
 
 print()
