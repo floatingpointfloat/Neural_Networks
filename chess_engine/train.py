@@ -11,7 +11,7 @@ ALLOW_TRAINING = True
 
 BATCH_SIZE = 256
 EPOCHS = 100
-LEARNING_RATE = 0.0005
+LEARNING_RATE = 0.001
 
 # Path to the checkpoint folder
 CHECKPOINT_DIR = Path(__file__).parent / "checkpoints"
@@ -93,6 +93,7 @@ if LATEST_CHECKPOINT.exists():
         best_loss = checkpoint["loss"]
 else:
     print("No checkpoint found. Starting from scratch.")
+    start_epoch = 0
 
 #training loop
 for epoch in range(start_epoch, EPOCHS + start_epoch):
