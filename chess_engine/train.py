@@ -5,7 +5,7 @@ from pathlib import Path
 from model import ChessValueNet
 from config import DATASET_PATH
 
-torch.backends.cudnn.benchmark = True #cuda optimization
+torch.backends.cudnn.benchmark = True  # cuda optimization
 
 ALLOW_TRAINING = True
 
@@ -22,27 +22,24 @@ CHECKPOINT_DIR = Path(__file__).parent / "checkpoints"
 LATEST_CHECKPOINT = CHECKPOINT_DIR / "latest.pt"
 BEST_CHECKPOINT = CHECKPOINT_DIR / "best.pt"
 
-CHECKPOINT_DIR.mkdir(
-    parents=True,
-    exist_ok=True
-)
+CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+
 
 def main():
-    #use CUDA if possible
+    # use CUDA if possible
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     model = ChessValueNet().to(device)
 
-    #master switch
+    # master switch
     if not ALLOW_TRAINING:
-        raise RuntimeError("No Training currently allowed. Please do not train the model")
+        raise RuntimeError(
+            "No Training currently allowed. Please do not train the model"
+        )
 
     # Load the saved dataset
-    data = torch.load(
-        DATASET_PATH,
-        map_location="cpu"
-    )
+    data = torch.load(DATASET_PATH, map_location="cpu")
 
     boards = data["boards"]
     targets = data["targets"]
@@ -51,10 +48,7 @@ def main():
     print(f"Boards shape:   {boards.shape}")
     print(f"Targets shape:  {targets.shape}")
 
-    dataset = TensorDataset(
-        boards,
-        targets
-    )
+    dataset = TensorDataset(boards, targets)
 
     validation_size = int(len(dataset) * VALIDATION_SPLIT)
     train_size = len(dataset) - validation_size
@@ -62,23 +56,23 @@ def main():
     train_dataset, validation_dataset = random_split(
         dataset,
         [train_size, validation_size],
-        generator=torch.Generator().manual_seed(42)
+        generator=torch.Generator().manual_seed(42),
     )
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=BATCH_SIZE,
         shuffle=True,
-        num_workers=NUM_WORKERS, #cuda optimization
-        pin_memory=True #faster gpu vram usage
+        num_workers=NUM_WORKERS,  # cuda optimization
+        pin_memory=True,  # faster gpu vram usage
     )
 
     validation_loader = DataLoader(
         validation_dataset,
         batch_size=BATCH_SIZE,
         shuffle=False,
-        num_workers=NUM_WORKERS, #cuda optimization
-        pin_memory=True #faster gpu vram usage
+        num_workers=NUM_WORKERS,  # cuda optimization
+        pin_memory=True,  # faster gpu vram usage
     )
 
     # Check the target distribution - only for debug
@@ -89,22 +83,19 @@ def main():
     print(f"Target max:  {targets.max().item():.6f}")
     print()
 
-
-    #loss function
+    # loss function
     criterion = torch.nn.MSELoss()
 
-    #Optimizer
+    # Optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-    #best validation loss
+    # best validation loss
     best_loss = float("inf")
 
     # Load the latest checkpoint if one exists
     if LATEST_CHECKPOINT.exists():
         print(f"Loading checkpoint: {LATEST_CHECKPOINT}")
-        checkpoint = torch.load(
-            LATEST_CHECKPOINT,
-            map_location=device)
+        checkpoint = torch.load(LATEST_CHECKPOINT, map_location=device)
         model.load_state_dict(checkpoint["model_state_dict"])
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         start_epoch = checkpoint["epoch"]
@@ -116,7 +107,7 @@ def main():
         print("No checkpoint found. Starting from scratch.")
         start_epoch = 0
 
-    #training loop
+    # training loop
     for epoch in range(start_epoch, EPOCHS + start_epoch):
         model.train()
 
@@ -124,36 +115,36 @@ def main():
         batches = 0
 
         for boards, targets in train_loader:
-            #move the data to the devide (gpu cuda/cpu)
+            # move the data to the devide (gpu cuda/cpu)
             boards = boards.to(device, non_blocking=True)
             targets = targets.to(device, non_blocking=True)
 
-            #reset the gradients to 0
+            # reset the gradients to 0
             optimizer.zero_grad()
 
-            #forward pass
+            # forward pass
             predictions = model(boards)
 
             # Remove the unnecessary dimension [64, 1] -> [64]
             predictions = predictions.squeeze(1)
 
-            #loss calculation
+            # loss calculation
             loss = criterion(predictions, targets)
 
             if batches % 1000 == 0:
                 print(f"Batch {batches} | Loss: {loss.item():.6f}")
 
-            #backpropagation aka pytorch does its magic
+            # backpropagation aka pytorch does its magic
             loss.backward()
 
-            #update the parameters
+            # update the parameters
             optimizer.step()
 
-            #track the loss
+            # track the loss
             epoch_loss += loss.item()
             batches += 1
 
-        #average loss for this epoch
+        # average loss for this epoch
         average_loss = epoch_loss / batches
 
         model.eval()
@@ -189,9 +180,9 @@ def main():
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
                 "loss": average_loss,
-                "validation_loss": average_validation_loss
+                "validation_loss": average_validation_loss,
             },
-            LATEST_CHECKPOINT
+            LATEST_CHECKPOINT,
         )
 
         # Save best checkpoint
@@ -203,11 +194,12 @@ def main():
                     "model_state_dict": model.state_dict(),
                     "optimizer_state_dict": optimizer.state_dict(),
                     "loss": average_loss,
-                    "validation_loss": average_validation_loss
+                    "validation_loss": average_validation_loss,
                 },
-                BEST_CHECKPOINT
+                BEST_CHECKPOINT,
             )
             print("New best model saved!")
+
 
 if __name__ == "__main__":
     main()
