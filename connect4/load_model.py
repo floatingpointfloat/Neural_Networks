@@ -19,6 +19,12 @@ def load_model():
 
     # load the weights and everything into the model
     weights = load_file("model.safetensors")
+    """debug to check the required shape
+    print("\nLOADED WEIGHTS:")
+    for name, tensor in weights.items():
+        print(f"{name:40} {tuple(tensor.shape)}")
+        """
+
     own_weights = (
         model.state_dict()
     )  # only load the suitable weights (this model misses the policy head, so we don't need the parameters of that)
@@ -44,6 +50,15 @@ def load_model():
     print(
         f"Trainable parameters (already trained): {sum(p.numel() for p in model.parameters() if p.requires_grad)}\n"
     )
+
+    """debug to check the required shape
+    print("\nMODEL ARCHITECTURE:")
+    print(model)
+
+    print("\nMODEL STATE DICT:")
+    for name, tensor in model.state_dict().items():
+       print(f"{name:40} {tuple(tensor.shape)}")
+       """
 
     return model
 

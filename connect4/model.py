@@ -22,7 +22,7 @@ class ResBlock(nn.Module):
 
     def forward(self, x):
         y = torch.relu(self.bn1(self.conv1(x)))
-        y = self.bn2(self.conv2())
+        y = self.bn2(self.conv2(y))
 
         return torch.relu(x + y)
 
@@ -42,14 +42,14 @@ class ValueNet(nn.Module):
 
         self.tower = nn.Sequential(*[ResBlock(filters) for _ in range(blocks)])
 
-        flat = 37 * 6 * 7
+        flat = 32 * 6 * 7
 
         self.value_head = nn.Sequential(
             nn.Conv2d(filters, 32, kernel_size=1, stride=1, padding=0, bias=False),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
             nn.Flatten(),
-            nn.Linear(32 * 6 + 7, 64),
+            nn.Linear(flat, 64),
             nn.ReLU(inplace=True),
             nn.Linear(64, 1),
             nn.Tanh(),
