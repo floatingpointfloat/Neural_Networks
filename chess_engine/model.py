@@ -1,16 +1,45 @@
 import torch.nn as nn
+import torch.nn.functional as F
+
+class Resblock(nn.Module):
+    def __init__(self, channels):
+        super(Resblock, self).__init__()
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(channels)
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(channels)
+
+    def forward(self, x):
+        residual = x #remember the old position
+
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = F.relu(self.bn2(self.conv2(out)))
+
+        out += residual
+        out = F.relu(out)
+        return out
 
 class ChessValueNet(nn.Module):
     def __init__(self):
         super(ChessValueNet, self).__init__()
 
-        self.features = nn.Sequential(
+        
+        self.start_conv = nn.Sequential(
             nn.Conv2d(18, 64, kernel_size=3, padding=1),
-            nn.ReLU(), #making the model nonlinear - better :) can learn complex stuff
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, padding=1),
-            nn.ReLU(),
+            nn.BatchNorm2d(128),
+            nn.ReLU()
+        )
+
+        self.features = nn.Sequential(
+            Resblock(128),
+            Resblock(128),
+            Resblock(128),
+            Resblock(128),
+            Resblock(128)
         )
 
         self.fully_connected = nn.Sequential(
@@ -23,6 +52,8 @@ class ChessValueNet(nn.Module):
         )
 
     def forward(self, x):
+        x = self.start_conv(x)
         x = self.features(x)
         x = self.fully_connected(x)
+
         return x
