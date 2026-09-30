@@ -5,11 +5,13 @@ from pathlib import Path
 from model import ChessValueNet
 from config import DATASET_PATH
 
+torch.backends.cudnn.benchmark = True #cuda optimization
+
 ALLOW_TRAINING = True
 
-BATCH_SIZE = 64
+BATCH_SIZE = 256
 EPOCHS = 100
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.0005
 
 # Path to the checkpoint folder
 CHECKPOINT_DIR = Path(__file__).parent / "checkpoints"
@@ -53,26 +55,18 @@ dataset = TensorDataset(
 loader = DataLoader(
     dataset,
     batch_size=BATCH_SIZE,
-    shuffle=True
+    shuffle=True,
+    num_workers=2, #cuda optimization
+    pin_memory=True #faster gpu vram usage
 )
 
 # Check the target distribution - only for debug
 print()
-print(
-    f"Target mean: {targets.mean().item():.6f}"
-)
-
-print(
-    f"Target std:  {targets.std().item():.6f}"
-)
-
-print(
-    f"Target min:  {targets.min().item():.6f}"
-)
-
-print(
-    f"Target max:  {targets.max().item():.6f}"
-)
+print(f"Target mean: {targets.mean().item():.6f}")
+print(f"Target std:  {targets.std().item():.6f}")
+print(f"Target min:  {targets.min().item():.6f}")
+print(f"Target max:  {targets.max().item():.6f}")
+print()
 
 
 #loss function
@@ -86,41 +80,22 @@ best_loss = float("inf")
 
 # Load the latest checkpoint if one exists
 if LATEST_CHECKPOINT.exists():
-
-    print(
-        f"Loading checkpoint: {LATEST_CHECKPOINT}"
-    )
-
+    print(f"Loading checkpoint: {LATEST_CHECKPOINT}")
     checkpoint = torch.load(
         LATEST_CHECKPOINT,
-        map_location=device
-    )
-
-    model.load_state_dict(
-        checkpoint["model_state_dict"]
-    )
-
-    optimizer.load_state_dict(
-        checkpoint["optimizer_state_dict"]
-    )
-
+        map_location=device)
+    model.load_state_dict(checkpoint["model_state_dict"])
+    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     start_epoch = checkpoint["epoch"]
-
-    print(
-        f"Resuming from epoch {start_epoch}"
-    )
-
-
+    print(f"Resuming from epoch {start_epoch}")
     # Use the saved loss as the current best loss
     if "loss" in checkpoint:
         best_loss = checkpoint["loss"]
-
 else:
-
     print("No checkpoint found. Starting from scratch.")
 
 #training loop
-for epoch in range(EPOCHS):
+for epoch in range(start_epoch, EPOCHS + start_epoch):
     model.train()
 
     epoch_loss = 0.0
@@ -128,33 +103,14 @@ for epoch in range(EPOCHS):
 
     for boards, targets in loader:
         #move the data to the devide (gpu cuda/cpu)
-        boards = boards.to(device)
-        targets = targets.to(device)
+        boards = boards.to(device, non_blocking=True)
+        targets = targets.to(device, non_blocking=True)
 
         #reset the gradients to 0
         optimizer.zero_grad()
 
         #forward pass
         predictions = model(boards)
-
-       ##only for debug
-       #with torch.no_grad():
-       #    if batches % 500 == 0:
-       #        print(
-       #            f"Batch {batches} | "
-       #            f"Prediction: mean={predictions.mean().item():.6f}, "
-       #            f"std={predictions.std().item():.6f}, "
-       #            f"min={predictions.min().item():.6f}, "
-       #            f"max={predictions.max().item():.6f}"
-       #        )
-
-       #        print(
-       #            f"Batch {batches} | "
-       #            f"Target:     mean={targets.mean().item():.6f}, "
-       #            f"std={targets.std().item():.6f}, "
-       #            f"min={targets.min().item():.6f}, "
-       #            f"max={targets.max().item():.6f}"
-       #        )
 
         # Remove the unnecessary dimension [64, 1] -> [64]
         predictions = predictions.squeeze(1)
@@ -194,12 +150,9 @@ for epoch in range(EPOCHS):
         LATEST_CHECKPOINT
     )
 
-
     # Save best checkpoint
     if average_loss < best_loss:
-
         best_loss = average_loss
-
         torch.save(
             {
                 "epoch": epoch + 1,
@@ -209,5 +162,4 @@ for epoch in range(EPOCHS):
             },
             BEST_CHECKPOINT
         )
-
         print("New best model saved!")
