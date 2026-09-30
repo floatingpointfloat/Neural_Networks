@@ -14,6 +14,7 @@ EPOCHS = 100
 LEARNING_RATE = 0.00001
 
 VALIDATION_SPLIT = 0.1
+NUM_WORKERS = 4
 
 # Path to the checkpoint folder
 CHECKPOINT_DIR = Path(__file__).parent / "checkpoints"
@@ -68,7 +69,7 @@ def main():
         train_dataset,
         batch_size=BATCH_SIZE,
         shuffle=True,
-        num_workers=2, #cuda optimization
+        num_workers=NUM_WORKERS, #cuda optimization
         pin_memory=True #faster gpu vram usage
     )
 
@@ -76,7 +77,7 @@ def main():
         validation_dataset,
         batch_size=BATCH_SIZE,
         shuffle=False,
-        num_workers=2, #cuda optimization
+        num_workers=NUM_WORKERS, #cuda optimization
         pin_memory=True #faster gpu vram usage
     )
 
