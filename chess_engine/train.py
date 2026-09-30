@@ -11,7 +11,7 @@ ALLOW_TRAINING = True
 
 BATCH_SIZE = 256
 EPOCHS = 100
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0005
 
 # Path to the checkpoint folder
 CHECKPOINT_DIR = Path(__file__).parent / "checkpoints"
@@ -56,7 +56,7 @@ loader = DataLoader(
     dataset,
     batch_size=BATCH_SIZE,
     shuffle=True,
-    num_workers=4, #cuda optimization
+    num_workers=0, #cuda optimization
     pin_memory=True #faster gpu vram usage
 )
 
