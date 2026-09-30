@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset, random_split
 from pathlib import Path
 
 from model import ChessValueNet
@@ -12,6 +12,8 @@ ALLOW_TRAINING = True
 BATCH_SIZE = 128
 EPOCHS = 100
 LEARNING_RATE = 0.00001
+
+VALIDATION_SPLIT = 0.1
 
 # Path to the checkpoint folder
 CHECKPOINT_DIR = Path(__file__).parent / "checkpoints"
@@ -52,10 +54,27 @@ dataset = TensorDataset(
     targets
 )
 
-loader = DataLoader(
+validation_size = int(len(dataset) * VALIDATION_SPLIT)
+train_size = len(dataset) - validation_size
+
+train_dataset, validation_dataset = random_split(
     dataset,
+    [train_size, validation_size],
+    generator=torch.Generator().manual_seed(42)
+)
+
+train_loader = DataLoader(
+    train_dataset,
     batch_size=BATCH_SIZE,
     shuffle=True,
+    num_workers=0, #cuda optimization
+    pin_memory=True #faster gpu vram usage
+)
+
+validation_loader = DataLoader(
+    validation_dataset,
+    batch_size=BATCH_SIZE,
+    shuffle=False,
     num_workers=0, #cuda optimization
     pin_memory=True #faster gpu vram usage
 )
@@ -75,7 +94,7 @@ criterion = torch.nn.MSELoss()
 #Optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-#best loss
+#best validation loss
 best_loss = float("inf")
 
 # Load the latest checkpoint if one exists
@@ -88,9 +107,9 @@ if LATEST_CHECKPOINT.exists():
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     start_epoch = checkpoint["epoch"]
     print(f"Resuming from epoch {start_epoch}")
-    # Use the saved loss as the current best loss
-    if "loss" in checkpoint:
-        best_loss = checkpoint["loss"]
+    # Use the saved validation loss as the current best loss
+    if "validation_loss" in checkpoint:
+        best_loss = checkpoint["validation_loss"]
 else:
     print("No checkpoint found. Starting from scratch.")
     start_epoch = 0
@@ -102,7 +121,7 @@ for epoch in range(start_epoch, EPOCHS + start_epoch):
     epoch_loss = 0.0
     batches = 0
 
-    for boards, targets in loader:
+    for boards, targets in train_loader:
         #move the data to the devide (gpu cuda/cpu)
         boards = boards.to(device, non_blocking=True)
         targets = targets.to(device, non_blocking=True)
@@ -135,9 +154,30 @@ for epoch in range(start_epoch, EPOCHS + start_epoch):
     #average loss for this epoch
     average_loss = epoch_loss / batches
 
+    model.eval()
+
+    validation_loss = 0.0
+    validation_batches = 0
+
+    with torch.no_grad():
+        for boards, targets in validation_loader:
+            boards = boards.to(device, non_blocking=True)
+            targets = targets.to(device, non_blocking=True)
+
+            predictions = model(boards)
+            predictions = predictions.squeeze(1)
+
+            loss = criterion(predictions, targets)
+
+            validation_loss += loss.item()
+            validation_batches += 1
+
+    average_validation_loss = validation_loss / validation_batches
+
     print(
         f"Epoch {epoch + 1}/{EPOCHS} "
-        f"- Loss: {average_loss:.6f}"
+        f"- Loss: {average_loss:.6f} "
+        f"- Validation Loss: {average_validation_loss:.6f}"
     )
 
     # Save latest checkpoint
@@ -146,20 +186,22 @@ for epoch in range(start_epoch, EPOCHS + start_epoch):
             "epoch": epoch + 1,
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
-            "loss": average_loss
+            "loss": average_loss,
+            "validation_loss": average_validation_loss
         },
         LATEST_CHECKPOINT
     )
 
     # Save best checkpoint
-    if average_loss < best_loss:
-        best_loss = average_loss
+    if average_validation_loss < best_loss:
+        best_loss = average_validation_loss
         torch.save(
             {
                 "epoch": epoch + 1,
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
-                "loss": average_loss
+                "loss": average_loss,
+                "validation_loss": average_validation_loss
             },
             BEST_CHECKPOINT
         )

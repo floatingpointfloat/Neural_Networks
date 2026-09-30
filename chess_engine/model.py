@@ -10,15 +10,16 @@ class Resblock(nn.Module):
         self.bn2 = nn.BatchNorm2d(channels)
 
     def forward(self, x):
-        residual = x #remember the old position
+        residual = x
 
         out = F.relu(self.bn1(self.conv1(x)))
-        out = F.relu(self.bn2(self.conv2(out)))
+        out = self.bn2(self.conv2(out))
 
         out = out + residual
         out = F.relu(out)
-        return out
 
+        return out
+    
 class ChessValueNet(nn.Module):
     def __init__(self):
         super(ChessValueNet, self).__init__()
@@ -46,7 +47,7 @@ class ChessValueNet(nn.Module):
             nn.Flatten(), #fc layers expect a vector, not feature maps
             nn.Linear(128 * 8 * 8, 256),
             nn.ReLU(),
-            nn.Dropout(0.3), #prevent overfitting
+            #nn.Dropout(0.3), #prevent overfitting
             nn.Linear(256, 1),
             nn.Tanh() #normalize betwenn -1 and 1
         )
