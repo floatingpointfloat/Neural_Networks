@@ -5,20 +5,30 @@ from dataclasses import dataclass
 
 from board_to_tensor import board_to_tensor
 
-PIECE_VALUES = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 1000}
-TIME_LIMIT = 30 #in seconds
+PIECE_VALUES = {
+    chess.PAWN: 1,
+    chess.KNIGHT: 3,
+    chess.BISHOP: 3,
+    chess.ROOK: 5,
+    chess.QUEEN: 9,
+    chess.KING: 1000,
+}
+TIME_LIMIT = 30  # in seconds
+
 
 class SearchTimeout(Exception):
     pass
 
+
 @dataclass
-class TTEntry: #transposition table to check for exact same positions
+class TTEntry:  # transposition table to check for exact same positions
     depth: int
     value: float
     flag: str
- 
+
+
 def evaluate_board(board: chess.Board, model, device):
-    #evaluates a position using the cnn
+    # evaluates a position using the cnn
 
     tensor = board_to_tensor(board)
     tensor = tensor.unsqueeze(0).to(device)
@@ -28,8 +38,18 @@ def evaluate_board(board: chess.Board, model, device):
 
     return value
 
-#check for important remaining moves even if the depth is zero
-def quiescence_search(board: chess.Board, alpha, beta, is_maximizing, model, device, time_limit, start_time):
+
+# check for important remaining moves even if the depth is zero
+def quiescence_search(
+    board: chess.Board,
+    alpha,
+    beta,
+    is_maximizing,
+    model,
+    device,
+    time_limit,
+    start_time,
+):
     stand_pat = evaluate_board(board, model, device)
 
     if time.time() - start_time >= time_limit:
@@ -49,7 +69,9 @@ def quiescence_search(board: chess.Board, alpha, beta, is_maximizing, model, dev
             board.push(move)
 
             try:
-                evaluation = quiescence_search(board, alpha, beta, False, model, device, time_limit, start_time)
+                evaluation = quiescence_search(
+                    board, alpha, beta, False, model, device, time_limit, start_time
+                )
             finally:
                 board.pop()
 
@@ -74,7 +96,9 @@ def quiescence_search(board: chess.Board, alpha, beta, is_maximizing, model, dev
             board.push(move)
 
             try:
-                evaluation = quiescence_search(board, alpha, beta, True, model, device, time_limit, start_time)
+                evaluation = quiescence_search(
+                    board, alpha, beta, True, model, device, time_limit, start_time
+                )
             finally:
                 board.pop()
 
@@ -86,7 +110,8 @@ def quiescence_search(board: chess.Board, alpha, beta, is_maximizing, model, dev
 
         return beta
 
-def order_moves(board:chess.Board):
+
+def order_moves(board: chess.Board):
     moves = list(board.legal_moves)
 
     def score_moves(move):
@@ -94,7 +119,9 @@ def order_moves(board:chess.Board):
 
         if board.is_capture(move):
             attacker_value = PIECE_VALUES[(board.piece_at(move.from_square)).piece_type]
-            if board.is_en_passant(move): #catch en passant squares, no piece would actually be standing on those quares
+            if board.is_en_passant(
+                move
+            ):  # catch en passant squares, no piece would actually be standing on those quares
                 victim_value = PIECE_VALUES[chess.PAWN]
             else:
                 victim_value = PIECE_VALUES[(board.piece_at(move.to_square)).piece_type]
@@ -107,13 +134,26 @@ def order_moves(board:chess.Board):
         if board.is_castling(move):
             score += 40
 
-        return score     
+        return score
 
-    moves.sort(key=score_moves, reverse=True)  
-    return moves 
+    moves.sort(key=score_moves, reverse=True)
+    return moves
 
-#minimax search function - alpha beta search tree pruning
-def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device, time_limit, start_time, transposition_table, search_stats):
+
+# minimax search function - alpha beta search tree pruning
+def minimax(
+    board: chess.Board,
+    depth,
+    alpha,
+    beta,
+    is_maximizing,
+    model,
+    device,
+    time_limit,
+    start_time,
+    transposition_table,
+    search_stats,
+):
     if time.time() - start_time > time_limit:
         raise SearchTimeout
 
@@ -127,16 +167,20 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
         return 0.0
 
     if depth == 0:
-        return quiescence_search(board, alpha, beta, is_maximizing, model, device, time_limit, start_time)
+        return quiescence_search(
+            board, alpha, beta, is_maximizing, model, device, time_limit, start_time
+        )
 
-    #tt table
+    # tt table
     key = board.fen()
 
     if key in transposition_table:
         search_stats["tt_hits"] += 1
         entry = transposition_table[key]
 
-        if entry.depth >= depth: #only use if the used search was at least as deep as this one
+        if (
+            entry.depth >= depth
+        ):  # only use if the used search was at least as deep as this one
             if entry.flag == "EXACT":
                 return entry.value
 
@@ -149,17 +193,29 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
             if alpha >= beta:
                 return entry.value
 
-    #save the current alpha and beta for usage in the tt table later on
+    # save the current alpha and beta for usage in the tt table later on
     original_alpha = alpha
     original_beta = beta
-            
+
     if is_maximizing:
         max_eval = float("-inf")
         for move in order_moves(board):
             board.push(move)
 
             try:
-                evaluation = minimax(board, depth - 1, alpha, beta, False, model, device, time_limit, start_time, transposition_table, search_stats)
+                evaluation = minimax(
+                    board,
+                    depth - 1,
+                    alpha,
+                    beta,
+                    False,
+                    model,
+                    device,
+                    time_limit,
+                    start_time,
+                    transposition_table,
+                    search_stats,
+                )
             finally:
                 board.pop()
 
@@ -178,7 +234,19 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
             board.push(move)
 
             try:
-                evaluation = minimax(board, depth - 1, alpha, beta, True, model, device, time_limit, start_time, transposition_table, search_stats)
+                evaluation = minimax(
+                    board,
+                    depth - 1,
+                    alpha,
+                    beta,
+                    True,
+                    model,
+                    device,
+                    time_limit,
+                    start_time,
+                    transposition_table,
+                    search_stats,
+                )
             finally:
                 board.pop()
 
@@ -197,10 +265,11 @@ def minimax(board: chess.Board, depth, alpha, beta, is_maximizing, model, device
     else:
         flag = "EXACT"
 
-    #save result
+    # save result
     transposition_table[key] = TTEntry(depth=depth, value=value, flag=flag)
 
     return value
+
 
 def find_best_move(board: chess.Board, model, device, time_limit=TIME_LIMIT):
     start_time = time.time()
@@ -231,17 +300,17 @@ def find_best_move(board: chess.Board, model, device, time_limit=TIME_LIMIT):
 
             try:
                 value = minimax(
-                board,
-                current_depth - 1,
-                alpha,
-                beta,
-                board.turn == chess.BLACK,
-                model,
-                device,
-                time_limit,
-                start_time,
-                transposition_table,
-                search_stats
+                    board,
+                    current_depth - 1,
+                    alpha,
+                    beta,
+                    board.turn == chess.WHITE,
+                    model,
+                    device,
+                    time_limit,
+                    start_time,
+                    transposition_table,
+                    search_stats,
                 )
             except SearchTimeout:
                 depth_completed = False
