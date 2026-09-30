@@ -4,8 +4,8 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset, random_split
 from pathlib import Path
 
-from model import model as Model
-from config import DATASET_PATH
+from templates.model_template import SimpleValueNet as Model #has to change
+from templates.config import DATASET_PATH
 
 # Path to the checkpoint folder
 CHECKPOINT_DIR = Path(__file__).parent / "checkpoints"
