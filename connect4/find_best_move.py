@@ -82,20 +82,25 @@ def negamax(
         raise SearchTimeout
 
     original_alpha = alpha
-
-    # transposition table
+    original_beta = beta
 
     key = board.tobytes()
 
     if transposition_table is not None and key in transposition_table:
-        search_stats["tt_hits"] += 1
+
         entry = transposition_table[key]
 
+        if search_stats is not None:
+            search_stats["tt_hits"] += 1
+
         if entry.depth >= depth:
+
             if entry.flag == "EXACT":
                 return entry.value
+
             elif entry.flag == "LOWERBOUND":
                 alpha = max(alpha, entry.value)
+
             elif entry.flag == "UPPERBOUND":
                 beta = min(beta, entry.value)
 
@@ -105,38 +110,50 @@ def negamax(
     game_over, winner, draw = is_game_over(board)
 
     if game_over:
+
         if draw:
             value = DRAW_VALUE
-        current_player = get_current_player(board)
-        if winner == current_player:
-            value = WIN_VALUE
-        value = LOSS_VALUE
+
+        else:
+            current_player = get_current_player(board)
+
+            if winner == current_player:
+                value = WIN_VALUE
+            else:
+                value = LOSS_VALUE
 
         if transposition_table is not None:
-            transposition_table[key] == TTEntry(depth=depth, value=value, flag="EXACT")
+            transposition_table[key] = TTEntry(
+                depth=depth,
+                value=value,
+                flag="EXACT",
+            )
 
         return value
 
     if depth == 0:
+
         if is_critical_position(board):
             value = IMMEDIATE_LOSS
-
-        value = evaluate(board, model, device)
+        else:
+            value = evaluate(board, model, device)
 
         if transposition_table is not None:
-            transposition_table[key] = TTEntry(depth=depth, value=value, flag="EXACT")
+            transposition_table[key] = TTEntry(
+                depth=depth,
+                value=value,
+                flag="EXACT",
+            )
 
         return value
-
-    """
-    Actual Negamax Search
-    """
 
     best_value = float("-inf")
 
     for move in order_moves(board):
+
         child = simulate_move(board, move)
-        value = negamax(
+
+        value = -negamax(
             child,
             depth - 1,
             -beta,
@@ -150,22 +167,34 @@ def negamax(
         )
 
         best_value = max(best_value, value)
+
         alpha = max(alpha, value)
+
+        # alpha-beta cutoff
         if alpha >= beta:
             break
 
-        if best_value <= original_alpha:
-            flag = "UPPERBOUND"
-        elif best_value >= beta:
-            flag = "LOWERBOUND"
-        else:
-            flag = "EXACT"
+    # tt flags
 
-        # save to tt table
-        if transposition_table is not None:
-            transposition_table[key] = TTEntry(depth=depth, value=best_value, flag=flag)
+    if best_value <= original_alpha:
+        flag = "UPPERBOUND"
 
-        return best_value
+    elif best_value >= original_beta:
+        flag = "LOWERBOUND"
+
+    else:
+        flag = "EXACT"
+
+    # save tt
+
+    if transposition_table is not None:
+        transposition_table[key] = TTEntry(
+            depth=depth,
+            value=best_value,
+            flag=flag,
+        )
+
+    return best_value
 
 
 def find_best_move(
