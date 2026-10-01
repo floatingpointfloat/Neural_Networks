@@ -144,3 +144,4 @@ def is_critical_position(board):
 
         if check_win(new_board):
             return True
+    return False
