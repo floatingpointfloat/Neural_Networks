@@ -1,238 +1,67 @@
-import torch
 import numpy as np
+import torch
+import time
 
-from load_model import load_model
+from find_best_move import find_best_move
+from gamestates import (
+    legal_moves,
+    make_move,
+    flip_board,
+    is_game_over,
+    get_current_player,
+)
 
-ROWS = 6
-COLS = 7
+# ============================================================
+# Configuration
+# ============================================================
+
+TIME_LIMIT = 5
+MAX_DEPTH = 15
+
+HUMAN = 0
+AI = 1
 
 
 # ============================================================
-# BOARD REPRESENTATION
-# ============================================================
-#
-# Internes Board:
-#
-# board[0] = Steine von Spieler 1
-# board[1] = Steine von Spieler 2
-# board[2] = Turn
-#
-# Turn:
-#   0 = Spieler 1
-#   1 = Spieler 2
-#
-#
-# Netzwerk-Input:
-#
-# channel 0 = Steine des aktuellen Spielers
-# channel 1 = Steine des Gegners
-# channel 2 = Spieler am Zug
+# Board
 # ============================================================
 
 
 def create_board():
     """
-    Erstellt ein leeres Connect-4-Board.
+    Creates an empty Connect Four board.
+
+    Channel 0 = current player
+    Channel 1 = opponent
+    Channel 2 = actual player whose turn it is
     """
 
-    return np.zeros(
-        (3, ROWS, COLS),
-        dtype=np.float32,
-    )
+    board = np.zeros((3, 6, 7), dtype=np.int8)
 
+    # Player 0 starts
+    board[2, :, :] = 0
 
-def legal_moves(board):
-    """
-    Gibt alle Spalten zurück, in die noch ein Stein
-    gespielt werden kann.
-    """
-
-    moves = []
-
-    for col in range(COLS):
-
-        # Eine Spalte ist frei, wenn das oberste Feld
-        # noch von keinem Spieler belegt ist.
-        if board[0, 0, col] == 0 and board[1, 0, col] == 0:
-            moves.append(col)
-
-    return moves
-
-
-def make_move(board, col):
-    """
-    Spielt einen Zug in der angegebenen Spalte.
-
-    Gibt eine Kopie des Boards zurück.
-    Das ursprüngliche Board wird nicht verändert.
-    """
-
-    new_board = board.copy()
-
-    turn = int(board[2, 0, 0])
-
-    # Von unten nach oben nach dem ersten freien Feld suchen.
-    for row in range(ROWS - 1, -1, -1):
-
-        if new_board[0, row, col] == 0 and new_board[1, row, col] == 0:
-            new_board[turn, row, col] = 1.0
-            break
-
-    # Spieler wechseln.
-    new_board[2, :, :] = 1 - turn
-
-    return new_board
+    return board
 
 
 # ============================================================
-# NETWORK INPUT
-# ============================================================
-
-
-def board_for_network(board):
-    """
-    Wandelt unser internes Board in exakt die Darstellung um,
-    mit der das Netzwerk trainiert wurde.
-
-    Netzwerk:
-
-        channel 0 = aktueller Spieler
-        channel 1 = Gegner
-        channel 2 = Spieler am Zug
-    """
-
-    turn = int(board[2, 0, 0])
-
-    network_board = np.zeros_like(board)
-
-    if turn == 0:
-
-        # Spieler 1 ist am Zug.
-        network_board[0] = board[0]
-        network_board[1] = board[1]
-
-    else:
-
-        # Spieler 2 ist am Zug.
-        network_board[0] = board[1]
-        network_board[1] = board[0]
-
-    network_board[2] = turn
-
-    return torch.tensor(
-        network_board,
-        dtype=torch.float32,
-    )
-
-
-# ============================================================
-# VALUE PREDICTION
-# ============================================================
-
-
-def predict(model, board, device):
-    """
-    Berechnet den Value eines Boards.
-
-    Der zurückgegebene Value ist immer aus Sicht
-    des Spielers, der aktuell am Zug ist.
-    """
-
-    network_board = board_for_network(board)
-
-    network_board = network_board.unsqueeze(0).to(device)
-
-    with torch.no_grad():
-        value = model(network_board)
-
-    return value.item()
-
-
-# ============================================================
-# BOARD PRINTING
+# Display
 # ============================================================
 
 
 def print_board(board):
-    """
-    Gibt das interne Board schön formatiert aus.
-    """
-
-    turn = int(board[2, 0, 0])
-
-    print("    0   1   2   3   4   5   6")
-    print("  +---+---+---+---+---+---+---+")
-
-    for row in range(ROWS):
-
-        line = "  |"
-
-        for col in range(COLS):
-
-            if board[0, row, col] == 1:
-                symbol = "X"
-
-            elif board[1, row, col] == 1:
-                symbol = "O"
-
-            else:
-                symbol = " "
-
-            line += f" {symbol} |"
-
-        print(line)
-        print("  +---+---+---+---+---+---+---+")
-
     print()
-    print(f"Player {turn + 1} to move")
 
-
-# ============================================================
-# NETWORK INPUT PRINTING
-# ============================================================
-
-
-def print_network_input(board):
-    """
-    Zeigt die drei Kanäle so an, wie sie das Netzwerk erhält.
-    """
-
-    network_board = board_for_network(board).numpy()
-
-    current_player = int(board[2, 0, 0]) + 1
-    opponent = 3 - current_player
-
-    print()
-    print("NETWORK INPUT")
-    print("-" * 60)
-
-    print(f"Channel 0 = Current player (Player {current_player})")
-
-    for row in range(ROWS):
+    for row in range(6):
 
         line = ""
 
-        for col in range(COLS):
+        for column in range(7):
 
-            if network_board[0, row, col] == 1:
+            if board[0, row, column] == 1:
                 line += "X "
 
-            else:
-                line += ". "
-
-        print(line)
-
-    print()
-
-    print(f"Channel 1 = Opponent (Player {opponent})")
-
-    for row in range(ROWS):
-
-        line = ""
-
-        for col in range(COLS):
-
-            if network_board[1, row, col] == 1:
+            elif board[1, row, column] == 1:
                 line += "O "
 
             else:
@@ -240,393 +69,212 @@ def print_network_input(board):
 
         print(line)
 
-    print()
-
-    print(f"Channel 2 = Turn ({current_player})")
-
+    print("1 2 3 4 5 6 7")
     print()
 
 
 # ============================================================
-# VALUE FROM BOTH PERSPECTIVES
+# Human move
 # ============================================================
 
 
-def evaluate_both_perspectives(model, board, device):
+def get_human_move(board):
     """
-    Bewertet eine Stellung aus beiden Spielerperspektiven.
-
-    Wichtig:
-
-    Das Netzwerk selbst bekommt immer die Perspektive
-    des Spielers am Zug.
-
-    Deshalb erzeugen wir zwei Boards:
-
-        1. Originalstellung
-        2. Gleiche Stellung, aber mit anderem Spieler
-           am Zug
-
-    Damit können wir überprüfen, ob das Netzwerk
-    die Perspektive korrekt verarbeitet.
+    Ask the human for a legal column.
     """
 
-    # --------------------------------------------------------
-    # Originale Perspektive
-    # --------------------------------------------------------
+    legal = legal_moves(board)
 
-    original_turn = int(board[2, 0, 0])
+    while True:
 
-    value_original = predict(
-        model,
-        board,
-        device,
-    )
+        try:
+            move = int(input("Your move (1-7): ")) - 1
 
-    # --------------------------------------------------------
-    # Gleiche Stellung mit umgedrehtem Spieler am Zug
-    # --------------------------------------------------------
+        except ValueError:
+            print("Please enter a number from 1 to 7.")
+            continue
 
-    reversed_board = board.copy()
+        if move not in legal:
+            print("That column is full or invalid.")
+            continue
 
-    reversed_turn = 1 - original_turn
-
-    reversed_board[2, :, :] = reversed_turn
-
-    value_reversed = predict(
-        model,
-        reversed_board,
-        device,
-    )
-
-    return value_original, value_reversed
+        return move
 
 
 # ============================================================
-# SINGLE MOVE ANALYSIS
+# Apply move
 # ============================================================
 
 
-def analyze_move(
-    model,
-    board,
-    col,
-    device,
-    move_number,
-):
+def apply_move(board, move):
     """
-    Analysiert einen einzelnen möglichen Zug.
+    Applies a move and changes perspective.
+
+    The internal representation always stores:
+
+        channel 0 = current player
+        channel 1 = opponent
+
+    Therefore after a move we flip the board.
     """
 
-    current_player = int(board[2, 0, 0])
+    new_board = board.copy()
 
-    next_player = 1 - current_player
+    make_move(new_board, move)
 
-    print()
-    print("=" * 75)
-    print(f"MOVE {move_number}")
-    print("=" * 75)
-
-    print()
-    print(f"Player {current_player + 1} plays column {col}")
-
-    # --------------------------------------------------------
-    # Zug ausführen
-    # --------------------------------------------------------
-
-    new_board = make_move(
-        board,
-        col,
-    )
-
-    # --------------------------------------------------------
-    # Resultierendes Board
-    # --------------------------------------------------------
-
-    print()
-    print("RESULTING BOARD")
-    print("-" * 75)
-
-    print_board(new_board)
-
-    # --------------------------------------------------------
-    # Netzwerk-Input
-    # --------------------------------------------------------
-
-    print_network_input(new_board)
-
-    # --------------------------------------------------------
-    # Value aus Sicht des nächsten Spielers
-    # --------------------------------------------------------
-
-    next_player_value = predict(
-        model,
-        new_board,
-        device,
-    )
-
-    print()
-    print("-" * 75)
-
-    print(
-        f"Value from Player {next_player + 1} perspective:" f" {next_player_value:+.4f}"
-    )
-
-    # --------------------------------------------------------
-    # Perspektive umdrehen
-    # --------------------------------------------------------
-
-    other_board = new_board.copy()
-
-    other_board[2, :, :] = current_player
-
-    current_player_value = predict(
-        model,
-        other_board,
-        device,
-    )
-
-    print(
-        f"Value from Player {current_player + 1} perspective:"
-        f" {current_player_value:+.4f}"
-    )
-
-    # --------------------------------------------------------
-    # Summe / Symmetrie prüfen
-    # --------------------------------------------------------
-
-    perspective_sum = next_player_value + current_player_value
-
-    print()
-    print(f"Perspective sum:" f" {perspective_sum:+.4f}")
-
-    print("Expected:" " values should ideally have approximately" " opposite signs.")
-
-    # --------------------------------------------------------
-    # Interpretation
-    # --------------------------------------------------------
-
-    print()
-    print("INTERPRETATION")
-    print("-" * 75)
-
-    if next_player_value > 0.5:
-
-        print(
-            f"Network strongly prefers the position" f" for Player {next_player + 1}."
-        )
-
-    elif next_player_value < -0.5:
-
-        print(
-            f"Network strongly dislikes the position" f" for Player {next_player + 1}."
-        )
-
-    else:
-
-        print("Network sees the position as relatively balanced.")
-
-    return new_board
+    return flip_board(new_board)
 
 
 # ============================================================
-# MAIN
+# Main game
 # ============================================================
 
 
-def main():
+def play_game():
 
-    # --------------------------------------------------------
-    # Device
-    # --------------------------------------------------------
+    print("=" * 70)
+    print("CONNECT FOUR - HUMAN VS AI")
+    print("=" * 70)
+
+    print()
+    print("You are X.")
+    print("AI is O.")
+    print("Enter columns using numbers 1-7.")
+    print()
+
+    model = None
+
+    # Load model
+    from load_model import load_model
+
+    model = load_model()
+    model.eval()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    print(f"Using device: {device}")
+    model.to(device)
 
     print()
-
-    # --------------------------------------------------------
-    # Model laden
-    # --------------------------------------------------------
-
-    model = load_model()
-
+    print(f"Device: {device}")
     print()
-
-    # ========================================================
-    # TEST POSITION
-    # ========================================================
 
     board = create_board()
 
-    # Wir spielen eine kleine echte Spielsequenz:
-    #
-    # P1 -> 3
-    # P2 -> 2
-    # P1 -> 3
-    # P2 -> 4
-    # P1 -> 3
-    # P2 -> 4
-    #
-    # Danach ist P1 am Zug.
-    # ========================================================
+    move_number = 1
 
-    moves = [
-        3,
-        2,
-        3,
-        4,
-        3,
-        4,
-    ]
+    # --------------------------------------------------------
+    # Statistics
+    # --------------------------------------------------------
 
-    print("=" * 75)
-    print("CREATING TEST POSITION")
-    print("=" * 75)
+    ai_moves = 0
+    total_ai_time = 0.0
+    total_ai_depth = 0
 
-    print()
+    # --------------------------------------------------------
+    # Game loop
+    # --------------------------------------------------------
 
-    for move_number, col in enumerate(
-        moves,
-        start=1,
-    ):
+    while True:
 
-        player = int(board[2, 0, 0])
+        print_board(board)
 
-        print(f"Move {move_number}:" f" Player {player + 1}" f" -> column {col}")
+        # ----------------------------------------------------
+        # Check game over
+        # ----------------------------------------------------
 
-        board = make_move(
-            board,
-            col,
-        )
+        game_over, winner, draw = is_game_over(board)
 
-    # ========================================================
-    # AKTUELLE STELLUNG
-    # ========================================================
+        if game_over:
 
-    print()
-    print("=" * 75)
-    print("CURRENT POSITION")
-    print("=" * 75)
+            print_board(board)
 
-    print()
+            if draw:
+                print("DRAW!")
 
-    print_board(board)
+            elif winner == HUMAN:
+                print("YOU WIN!")
 
-    # ========================================================
-    # CURRENT VALUE
-    # ========================================================
+            else:
+                print("AI WINS!")
 
-    current_player = int(board[2, 0, 0])
+            break
 
-    current_value = predict(
-        model,
-        board,
-        device,
-    )
+        # ----------------------------------------------------
+        # Human turn
+        # ----------------------------------------------------
 
-    print()
-    print(f"Current value for Player {current_player + 1}:" f" {current_value:+.4f}")
+        current_player = get_current_player(board)
 
-    # ========================================================
-    # NETWORK INPUT
-    # ========================================================
+        if current_player == HUMAN:
 
-    print_network_input(board)
+            print(f"Move {move_number}")
+            print("Your turn.")
 
-    # ========================================================
-    # LEGAL MOVES
-    # ========================================================
+            move = get_human_move(board)
 
-    moves = legal_moves(board)
+            print(f"You play column {move + 1}")
 
-    print()
-    print("=" * 75)
-    print("LEGAL MOVES")
-    print("=" * 75)
+            board = apply_move(board, move)
 
-    print()
+        # ----------------------------------------------------
+        # AI turn
+        # ----------------------------------------------------
 
-    print(f"Player {current_player + 1} has" f" {len(moves)} legal moves:")
+        else:
 
-    print(" ".join(str(move) for move in moves))
+            print(f"Move {move_number}")
+            print("AI is thinking...")
 
-    # ========================================================
-    # ALLE ZÜGE ANALYSIEREN
-    # ========================================================
+            start = time.perf_counter()
 
-    print()
-    print("=" * 75)
-    print("ANALYZING EVERY LEGAL MOVE")
-    print("=" * 75)
+            move, value = find_best_move(
+                board,
+                model,
+                device,
+                time_limit=TIME_LIMIT,
+                max_depth=MAX_DEPTH,
+            )
 
-    for move_number, col in enumerate(
-        moves,
-        start=1,
-    ):
+            elapsed = time.perf_counter() - start
 
-        analyze_move(
-            model=model,
-            board=board,
-            col=col,
-            device=device,
-            move_number=move_number,
-        )
+            ai_moves += 1
+            total_ai_time += elapsed
+
+            print()
+            print("----------------------------------------")
+            print("AI RESULT")
+            print("----------------------------------------")
+            print(f"Move       : {move + 1}")
+            print(f"Evaluation : {value:.4f}")
+            print(f"Time       : {elapsed:.3f}s")
+            print("----------------------------------------")
+
+            board = apply_move(board, move)
+
+        move_number += 1
 
     # ========================================================
-    # ZUSAMMENFASSUNG
+    # Statistics
     # ========================================================
 
     print()
-    print()
-    print("=" * 75)
-    print("SUMMARY")
-    print("=" * 75)
+    print("=" * 70)
+    print("GAME STATISTICS")
+    print("=" * 70)
 
-    print()
+    print(f"Total moves : {move_number - 1}")
+    print(f"AI moves    : {ai_moves}")
 
-    print(
-        f"{'Column':<10}" f"{'Next player value':<25}" f"{'Original player value':<25}"
-    )
+    if ai_moves > 0:
 
-    print("-" * 60)
+        print(f"Average AI time : " f"{total_ai_time / ai_moves:.3f}s")
 
-    for col in moves:
+    print("=" * 70)
 
-        new_board = make_move(
-            board,
-            col,
-        )
 
-        next_player_value = predict(
-            model,
-            new_board,
-            device,
-        )
-
-        original_perspective = new_board.copy()
-
-        original_perspective[2, :, :] = current_player
-
-        original_player_value = predict(
-            model,
-            original_perspective,
-            device,
-        )
-
-        print(
-            f"{col:<10}"
-            f"{next_player_value:+.4f}"
-            f"{'':<20}"
-            f"{original_player_value:+.4f}"
-        )
-
-    print()
-    print("=" * 75)
-    print("TEST FINISHED")
-    print("=" * 75)
-
+# ============================================================
+# Start
+# ============================================================
 
 if __name__ == "__main__":
-    main()
+    play_game()
