@@ -117,3 +117,22 @@ def simulate_move(board, column):
     new_board = make_move(new_board, column)
 
     return flip_board(new_board)
+
+def order_moves(board):
+    moves = legal_moves(board)
+
+    def sort_moves(move):
+        score = 0
+        if move == 3:
+            score += 10
+        if move == 2 or move == 4:
+            score += 7
+        if move == 1 or move == 5:
+            score += 4
+        if move == 0 or move == 6:
+            score += 1
+
+        return score
+
+    moves = moves.sort(key=sort_moves, reverse=True)
+    return moves
