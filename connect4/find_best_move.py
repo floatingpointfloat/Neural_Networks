@@ -14,6 +14,7 @@ from gamestates import (
     get_current_player,
     copy_board,
     simulate_move,
-    order_moves
+    order_moves,
+    is_critical_position
 )
 
