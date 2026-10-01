@@ -4,7 +4,6 @@ Rules and general game state checks
 """
 
 import numpy as np
-import torch
 
 """
 Board structure: 
@@ -44,3 +43,77 @@ def flip_board(board):
     flipped[2, :, :] = 1 - board[2, :, :]  # opposites player turn now :)
 
     return flipped
+
+
+def check_draw(board):
+    return not legal_moves(board)
+
+
+def check_win(board):
+    directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
+
+    current_player = get_current_player(board)
+
+    for row in range(6):
+        for column in range(7):
+
+            if board[0, row, column] == 0 and board[1, row, column] == 0:
+                continue
+
+            channel = 0 if board[0, row, column] == 1 else 1
+
+            if channel == 0:
+                player = current_player
+            else:
+                player = 1 - current_player
+
+            for dr, dc in directions:
+                count = 1
+
+                r = row + dr
+                c = column + dc
+
+                while 0 <= r < 6 and 0 <= c < 7 and board[channel, r, c] == 1:
+                    count += 1
+                    r += dr
+                    c += dc
+
+                r = row - dr
+                c = column - dc
+
+                while 0 <= r < 6 and 0 <= c < 7 and board[channel, r, c] == 1:
+                    count += 1
+                    r -= dr
+                    c -= dc
+
+                if count >= 4:
+                    return True, player
+
+    return False, None
+
+
+def is_game_over(board):
+    # third channel for draws to differentiate
+    win, player = check_win(board)
+    if win:
+        return True, player, False
+
+    if check_draw(board):
+        return True, None, True
+
+    return False, None, False
+
+
+def get_current_player(board):
+    return PLAYER1 if board[2, 0, 0] == 0 else PLAYER2
+
+
+def copy_board(board):
+    return board.copy()
+
+
+def simulate_move(board, column):
+    new_board = board.copy()
+    new_board = make_move(new_board, column)
+
+    return flip_board(new_board)
