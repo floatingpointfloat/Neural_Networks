@@ -144,7 +144,7 @@ def is_critical_position(board):
     opponent_board = flip_board(board)
     for move in legal_moves(opponent_board):
         new_board = simulate_move(opponent_board, move)
-        win, player = check_win(new_board)
+        win, _ = check_win(new_board)
         if win:
             return True
     return False
