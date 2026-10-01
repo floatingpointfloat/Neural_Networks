@@ -136,3 +136,11 @@ def order_moves(board):
 
     moves = moves.sort(key=sort_moves, reverse=True)
     return moves
+
+def is_critical_position(board):
+    #check if the enemy could win
+    for move in legal_moves(board):
+        new_board = simulate_move(flip_board(board), move)
+
+        if check_win(new_board):
+            return True
