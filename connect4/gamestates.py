@@ -118,6 +118,7 @@ def simulate_move(board, column):
 
     return flip_board(new_board)
 
+
 def order_moves(board):
     moves = legal_moves(board)
 
@@ -134,11 +135,12 @@ def order_moves(board):
 
         return score
 
-    moves = moves.sort(key=sort_moves, reverse=True)
+    moves.sort(key=sort_moves, reverse=True)
     return moves
 
+
 def is_critical_position(board):
-    #check if the enemy could win
+    # check if the enemy could win
     opponent_board = flip_board(board)
     for move in legal_moves(opponent_board):
         new_board = simulate_move(opponent_board, move)
