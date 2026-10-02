@@ -138,4 +138,22 @@ class Connect4Board(QWidget):
         self.update()
 
     def mousePressEvent(self, event):
-        if event.button != Qt.L
+        if event.button() != Qt.LeftButton:
+            return
+
+        if self.ai_turn:
+            return
+        elif not self.human_turn:
+            return
+
+        width = self.width()
+        board_width = min(width * 0.85, 630)
+        board_x = (width - board_width) / 2
+        cell_width = board_width / 7
+        mouse_x = event.position().x()
+
+        if board_x <= mouse_x <= board_x + board_width:
+            column = int((mouse_x - board_x) / cell_width)
+            if 0 <= column < 7:
+                # "sends" a message to play.py
+                self.move_requested.emit(column)
