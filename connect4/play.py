@@ -81,14 +81,6 @@ def find_last_piece(column):
     return None
 
 
-def sound_playback():
-    global sounds
-    if sounds:
-        sound_object = playsound(
-            random.choice(sounds), block=False
-        )  # asynchronous playback, doesn't require any extra threads or something
-
-
 def human_move(column):
     global pending_move
 

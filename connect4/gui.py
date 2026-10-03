@@ -149,9 +149,9 @@ class Connect4Board(QWidget):
         else:
             return QColor("#202020")
         if player == 0:
-            return QColor("#100CFF")
+            return QColor("#0400D3")
 
-        return QColor("#F44336")
+        return QColor("#CC0E00")
 
     def get_player_color(self, player, alpha=255):
         if player == 0:
@@ -209,7 +209,7 @@ class Connect4Board(QWidget):
                 # Mark the last move
                 if self.last_move == (row, column):
                     painter.setBrush(Qt.NoBrush)
-                    painter.setPen(QPen(QColor(255, 255, 255, 100), 4))
+                    painter.setPen(QPen(QColor(255, 255, 255, 150), 6))
                     painter.drawEllipse(
                         int(center_x - radius - 2),
                         int(center_y - radius - 2),
