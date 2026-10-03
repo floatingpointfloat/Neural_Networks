@@ -18,12 +18,17 @@ def load_model():
     print(f"Using device: {device}")
 
     # load the weights and everything into the model
-    weights = load_file("model.safetensors")
-    """debug to check the required shape
-    print("\nLOADED WEIGHTS:")
-    for name, tensor in weights.items():
-        print(f"{name:40} {tuple(tensor.shape)}")
-        """
+    try:
+        weights = load_file("model.safetensors")
+        """debug to check the required shape
+        print("\nLOADED WEIGHTS:")
+        for name, tensor in weights.items():
+            print(f"{name:40} {tuple(tensor.shape)}")
+            """
+    except FileNotFoundError:
+        raise RuntimeError(
+            "File model.safetensors has not been found - might need to change the directory to 'Neural_Networks/connect4'"
+        )
 
     own_weights = (
         model.state_dict()

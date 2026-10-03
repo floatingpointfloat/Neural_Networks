@@ -13,7 +13,7 @@ from gamestates import (
 from find_best_move import find_best_move
 from load_model import load_model
 
-TIME_LIMIT = 7
+TIME_LIMIT = 3
 
 HUMAN = 0
 AI = 1
