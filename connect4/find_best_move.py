@@ -26,7 +26,7 @@ WIN_VALUE = 1.0
 LOSS_VALUE = -1.0
 DRAW_VALUE = 0.0
 
-IMMEDIATE_LOSS = -0.99
+IMMEDIATE_LOSS = -1.0
 
 """
 Board structure: 
@@ -132,27 +132,22 @@ def negamax(
         return value
 
     if depth == 0:
-
         if is_critical_position(board):
             value = IMMEDIATE_LOSS
         else:
             value = evaluate(board, model, device)
-
         if transposition_table is not None:
             transposition_table[key] = TTEntry(
                 depth=depth,
                 value=value,
                 flag="EXACT",
             )
-
         return value
 
     best_value = float("-inf")
 
     for move in order_moves(board):
-
         child = simulate_move(board, move)
-
         value = -negamax(
             child,
             depth - 1,
@@ -165,35 +160,27 @@ def negamax(
             transposition_table,
             search_stats,
         )
-
         best_value = max(best_value, value)
-
         alpha = max(alpha, value)
-
         # alpha-beta cutoff
         if alpha >= beta:
             break
 
     # tt flags
-
     if best_value <= original_alpha:
         flag = "UPPERBOUND"
-
     elif best_value >= original_beta:
         flag = "LOWERBOUND"
-
     else:
         flag = "EXACT"
 
     # save tt
-
     if transposition_table is not None:
         transposition_table[key] = TTEntry(
             depth=depth,
             value=best_value,
             flag=flag,
         )
-
     return best_value
 
 
@@ -205,8 +192,22 @@ def find_best_move(
     max_depth=20,
 ):
     start_time = time.time()
+    moves = order_moves(board)
+    if not moves:
+        return None, DRAW_VALUE
 
-    best_move = None
+    # Check for an immediate winning move
+    for move in moves:
+        child = simulate_move(board, move)
+        game_over, winner, draw = is_game_over(child)
+        if game_over and not draw:
+            current_player = get_current_player(child)
+            if winner != current_player:
+                print(f"Immediate winning move found: {move}")
+                return move, WIN_VALUE
+
+    # Use the first legal move as a fallback
+    best_move = moves[0]
     best_value = None
 
     current_depth = 1
@@ -223,10 +224,8 @@ def find_best_move(
         alpha = float("-inf")
         beta = float("+inf")
 
-        for move in order_moves(board):
-
+        for move in moves:
             child = simulate_move(board, move)
-
             try:
                 value = -negamax(
                     child,
@@ -251,12 +250,12 @@ def find_best_move(
 
             alpha = max(alpha, value)
 
-        # only use completed depths
+        # Only use completed depths
         if depth_completed:
             best_move = depth_best_move
             best_value = depth_best_value
 
-        # reached time limit
+        # Reached time limit
         if time.time() - start_time >= time_limit:
             break
 
