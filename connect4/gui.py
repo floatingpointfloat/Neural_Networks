@@ -207,12 +207,17 @@ class GameWindow(QWidget):
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setFixedHeight(25)
 
+        self.score_label = QLabel("Scores")
+        self.score_label.setAlignment(Qt.AlignCenter)
+        self.score_label.setFixedHeight(25)
+
         self.new_game_button = QPushButton("New Game")
 
         layout = QVBoxLayout()
 
         layout.addWidget(self.board_widget)
         layout.addWidget(self.status_label)
+        layout.addWidget(self.score_label)
         layout.addWidget(self.new_game_button)
 
         self.setLayout(layout)
@@ -220,12 +225,12 @@ class GameWindow(QWidget):
     def set_status(self, text):
         self.status_label.setText(text)
 
+    def set_score_label(self, text):
+        self.score_label.setText(text)
+
 
 def create_app():
     app = QApplication([])
-
     window = GameWindow()
-
     window.show()
-
     return app, window

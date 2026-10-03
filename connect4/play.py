@@ -19,27 +19,27 @@ HUMAN = 0
 AI = 1
 
 try:
-    with open("ai_beaten_amount.txt", "r") as f:
-        ai_beaten_amount = f.read()
-except FileNotFoundError:
-    raise RuntimeError(
-        "File ai_beaten_amount.txt wasn't found in this directory - might need to change the script from another directory."
-    )
+    with open("scores.txt", "r") as f:
+        """
+        Structure:
+        line 1 - human_beaten_amount
+        line 2 - ai_beaten_amount
+        line 3 - amount_draws
+        line 4 - total_games_played
+        """
+        lines = f.readlines()
 
-try:
-    with open("human_beaten_amount.txt", "r") as f:
-        human_beaten_amount = f.read()
+        human_beaten_amount = int(lines[0].strip())
+        ai_beaten_amount = int(lines[1].strip())
+        amount_draws = int(lines[2].strip())
+        total_games_played = int(lines[3].strip())
 except FileNotFoundError:
     raise RuntimeError(
-        "File human_beaten_amount.txt wasn't found in this directory - might need to change the script from another directory."
+        "File scores.txt wasn't found in this directory - might need to change the script from another directory."
     )
-
-try:
-    with open("games_played_amount.txt", "r") as f:
-        human_beaten_amount = f.read()
-except FileNotFoundError:
+except (IndexError, ValueError):
     raise RuntimeError(
-        "File games_played_amount.txt wasn't found in this directory - might need to change the script from another directory."
+        "File scores.txt was found, but its structure isn't as expected."
     )
 
 
@@ -187,15 +187,29 @@ def check_ai_result():
 
 
 def handle_game_over(winner, draw):
-    global game_over
+    global game_over, human_beaten_amount, ai_beaten_amount, amount_draws, total_games_played
     game_over = True
 
     if draw:
         window.set_status("Draw!")
+        amount_draws += 1
     elif winner == HUMAN:
         window.set_status("You win!")
+        ai_beaten_amount += 1
     elif winner == AI:
         window.set_status("AI wins!")
+        human_beaten_amount += 1
+    total_games_played += 1
+
+    with open("scores.txt", "w", encoding="utf-8") as f:
+        f.write(f"{human_beaten_amount}\n")
+        f.write(f"{ai_beaten_amount}\n")
+        f.write(f"{amount_draws}\n")
+        f.write(f"{total_games_played}\n")
+
+    window.set_score_label(
+        f"Games played total: {total_games_played} | Times lost: {human_beaten_amount} | Times won: {ai_beaten_amount} | Draws: {amount_draws}"
+    )
 
 
 def new_game():
@@ -222,6 +236,10 @@ def new_game():
 
 window.board_widget.move_requested.connect(human_move)
 window.new_game_button.clicked.connect(new_game)
+
+window.set_score_label(
+    f"Games played total: {total_games_played} | Times lost: {human_beaten_amount} | Times won: {ai_beaten_amount} | Draws: {amount_draws}"
+)
 
 
 timer = QTimer()
