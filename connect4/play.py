@@ -91,18 +91,15 @@ def human_move(column):
         return
     if current_player != HUMAN:
         return
-
     if column not in legal_moves(board):
         window.set_status("That column is full!")
         return
     pending_move = column
-
     window.board_widget.animate_move(column, HUMAN)
 
 
 def ai_worker(search_board):
     move, value = find_best_move(search_board, model, device, time_limit=TIME_LIMIT)
-
     ai_result["move"] = move
     ai_result["value"] = value
     ai_result["finished"] = True
@@ -113,7 +110,6 @@ def start_ai():
 
     ai_thinking = True
     window.set_status("AI is thinking...")
-
     update_gui()
     search_board = board.copy()
 

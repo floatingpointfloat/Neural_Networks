@@ -93,8 +93,8 @@ class Connect4Board(QWidget):
         # Start above the board
         self.animating_y = board_y - radius - 10
         self.animating_target_y = target_y
-        self.animation_acceleration = 1
-        self.animation_falling_speed = 2
+        self.animation_acceleration = 2
+        self.animation_falling_speed = 0
         self.animation_timer.start(16)
         self.update()
 
@@ -186,19 +186,6 @@ class Connect4Board(QWidget):
                     int(radius * 2),
                     int(radius * 2),
                 )
-
-                # Piece reflection
-                if color.name() != "#202020":
-                    highlight_radius = radius * 0.16
-                    highlight_x = center_x - radius * 0.35
-                    highlight_y = center_y - radius * 0.35
-                    painter.setBrush(QBrush(QColor(255, 255, 255, 150)))
-                    painter.drawEllipse(
-                        int(highlight_x - highlight_radius),
-                        int(highlight_y - highlight_radius),
-                        int(highlight_radius * 2),
-                        int(highlight_radius * 2),
-                    )
 
                 # Mark the last move
                 if self.last_move == (row, column):
