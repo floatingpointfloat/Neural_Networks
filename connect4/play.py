@@ -18,6 +18,7 @@ TIME_LIMIT = 5
 HUMAN = 0
 AI = 1
 
+
 try:
     with open("scores.txt", "r") as f:
         """
@@ -33,6 +34,7 @@ try:
         ai_beaten_amount = int(lines[1].strip())
         amount_draws = int(lines[2].strip())
         total_games_played = int(lines[3].strip())
+
 except FileNotFoundError:
     raise RuntimeError(
         "File scores.txt wasn't found in this directory - might need to change the script from another directory."
@@ -56,8 +58,8 @@ current_player = HUMAN
 
 game_over = False
 ai_thinking = False
-
 last_move = None
+pending_move = None
 
 ai_result = {
     "finished": False,
@@ -81,10 +83,7 @@ def find_last_piece(column):
 
 
 def human_move(column):
-    global board
-    global current_player
-    global game_over
-    global last_move
+    global pending_move
 
     if game_over:
         return
@@ -92,28 +91,13 @@ def human_move(column):
         return
     if current_player != HUMAN:
         return
+
     if column not in legal_moves(board):
         window.set_status("That column is full!")
         return
+    pending_move = column
 
-    board = make_move(board, column)
-
-    row = find_last_piece(column)
-    last_move = (row, column)
-
-    update_gui()
-
-    finished, winner, draw = is_game_over(board)
-
-    if finished:
-        handle_game_over(winner, draw)
-        return
-
-    board = flip_board(board)
-    current_player = AI
-
-    update_gui()
-    start_ai()
+    window.board_widget.animate_move(column, HUMAN)
 
 
 def ai_worker(search_board):
@@ -138,23 +122,17 @@ def start_ai():
     ai_result["value"] = None
 
     thread = threading.Thread(target=ai_worker, args=(search_board,), daemon=True)
-
     thread.start()
 
 
 def check_ai_result():
-    global board
-    global current_player
     global ai_thinking
-    global game_over
-    global last_move
+    global pending_move
 
     if not ai_thinking:
         return
     if not ai_result["finished"]:
         return
-
-    ai_thinking = False
 
     move = ai_result["move"]
     value = ai_result["value"]
@@ -163,31 +141,90 @@ def check_ai_result():
     print(f"AI value: {value:.4f}")
 
     if move is None:
-        game_over = True
-        window.set_status("AI found no move.")
+        ai_thinking = False
+        finish_ai_no_move()
         return
+    pending_move = move
+    ai_thinking = False
 
-    board = make_move(board, move)
+    # Prevent the timer from starting the animation again
+    ai_result["finished"] = False
+    window.board_widget.animate_move(move, AI)
 
-    row = find_last_piece(move)
-    last_move = (row, move)
+
+def finish_animation():
+    if pending_move is None:
+        return
+    if current_player == HUMAN:
+        finish_human_move()
+    elif current_player == AI:
+        finish_ai_move()
+
+
+def finish_human_move():
+    global board
+    global current_player
+    global game_over
+    global last_move
+    global pending_move
+
+    column = pending_move
+    board = make_move(board, column)
+    row = find_last_piece(column)
+    last_move = (row, column)
+    pending_move = None
 
     update_gui()
 
+    finished, winner, draw = is_game_over(board)
+    if finished:
+        handle_game_over(winner, draw)
+        return
+    board = flip_board(board)
+    current_player = AI
+
+    update_gui()
+    start_ai()
+
+
+def finish_ai_move():
+    global board
+    global current_player
+    global game_over
+    global last_move
+    global pending_move
+    move = pending_move
+
+    board = make_move(board, move)
+    row = find_last_piece(move)
+    last_move = (row, move)
+    pending_move = None
+    update_gui()
     finished, winner, draw = is_game_over(board)
 
     if finished:
         handle_game_over(winner, draw)
         return
-
     board = flip_board(board)
     current_player = HUMAN
+
     update_gui()
     window.set_status("Your turn")
 
 
+def finish_ai_no_move():
+    global game_over
+    game_over = True
+    window.set_status("AI found no move.")
+
+
 def handle_game_over(winner, draw):
-    global game_over, human_beaten_amount, ai_beaten_amount, amount_draws, total_games_played
+    global game_over
+    global human_beaten_amount
+    global ai_beaten_amount
+    global amount_draws
+    global total_games_played
+
     game_over = True
 
     if draw:
@@ -208,7 +245,10 @@ def handle_game_over(winner, draw):
         f.write(f"{total_games_played}\n")
 
     window.set_score_label(
-        f"Games played total: {total_games_played} | Times lost: {human_beaten_amount} | Times won: {ai_beaten_amount} | Draws: {amount_draws}"
+        f"Games played total: {total_games_played} | "
+        f"Times lost: {human_beaten_amount} | "
+        f"Times won: {ai_beaten_amount} | "
+        f"Draws: {amount_draws}"
     )
 
 
@@ -218,27 +258,32 @@ def new_game():
     global game_over
     global ai_thinking
     global last_move
+    global pending_move
 
     board = np.zeros((3, 6, 7), dtype=np.int8)
 
     current_player = HUMAN
+
     game_over = False
     ai_thinking = False
     last_move = None
-
+    pending_move = None
     ai_result["finished"] = False
     ai_result["move"] = None
     ai_result["value"] = None
-
     window.set_status("Your turn")
+
     update_gui()
 
 
 window.board_widget.move_requested.connect(human_move)
+window.board_widget.animation_finished.connect(finish_animation)
 window.new_game_button.clicked.connect(new_game)
-
 window.set_score_label(
-    f"Games played total: {total_games_played} | Times lost: {human_beaten_amount} | Times won: {ai_beaten_amount} | Draws: {amount_draws}"
+    f"Games played total: {total_games_played} | "
+    f"Times lost: {human_beaten_amount} | "
+    f"Times won: {ai_beaten_amount} | "
+    f"Draws: {amount_draws}"
 )
 
 
@@ -247,5 +292,5 @@ timer.timeout.connect(check_ai_result)
 timer.start(30)
 
 
-update_gui()
+new_game()
 sys.exit(app.exec())
