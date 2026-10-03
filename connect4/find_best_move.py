@@ -26,7 +26,7 @@ WIN_VALUE = 1.0
 LOSS_VALUE = -1.0
 DRAW_VALUE = 0.0
 
-IMMEDIATE_LOSS = -1.0
+IMMEDIATE_LOSS = -0.999
 
 """
 Board structure: 
@@ -87,36 +87,29 @@ def negamax(
     key = board.tobytes()
 
     if transposition_table is not None and key in transposition_table:
-
         entry = transposition_table[key]
 
         if search_stats is not None:
             search_stats["tt_hits"] += 1
 
         if entry.depth >= depth:
-
             if entry.flag == "EXACT":
                 return entry.value
-
             elif entry.flag == "LOWERBOUND":
                 alpha = max(alpha, entry.value)
-
             elif entry.flag == "UPPERBOUND":
                 beta = min(beta, entry.value)
-
             if alpha >= beta:
                 return entry.value
 
     game_over, winner, draw = is_game_over(board)
 
     if game_over:
-
         if draw:
             value = DRAW_VALUE
 
         else:
             current_player = get_current_player(board)
-
             if winner == current_player:
                 value = WIN_VALUE
             else:
@@ -191,7 +184,7 @@ def find_best_move(
     time_limit=TIMELIMIT,
     max_depth=20,
 ):
-    start_time = time.time()
+    start_time = time.time()  # manual test also is part of the time
     moves = order_moves(board)
     if not moves:
         return None, DRAW_VALUE
@@ -205,10 +198,37 @@ def find_best_move(
             if winner != current_player:
                 print(f"Immediate winning move found: {move}")
                 return move, WIN_VALUE
+    # check for immediate opponent winning moves
+    opponent_board = flip_board(board)
+    for opponent_move in order_moves(opponent_board):
+        child = simulate_move(opponent_board, opponent_move)
+        game_over, winner, draw = is_game_over(child)
+        if game_over and not draw:
+            current_player = get_current_player(child)
+            if winner != current_player:
+                print(
+                    f"Immediate Opponent winning move found ({opponent_move}) - blocking..."
+                )
+                return opponent_move, LOSS_VALUE
+    # check for situations where the opponent could win via a ai move (like a staircase situation typa thingy)
+    safe_moves = moves.copy()
+    for move in moves:
+        ai_child = simulate_move(board, move)
+        for opponent_move in order_moves(ai_child):
+            opponent_child = simulate_move(ai_child, opponent_move)
+            game_over, winner, draw = is_game_over(opponent_child)
+            if game_over and not draw:
+                current_player = get_current_player(opponent_child)
+                if winner != current_player:
+                    safe_moves.remove(move)
+                    break
+    # in case there are no safe moves - just to be more explicit
+    if not safe_moves:
+        safe_moves = moves
 
     # Use the first legal move as a fallback
     best_move = moves[0]
-    best_value = None
+    best_value = DRAW_VALUE
 
     current_depth = 1
 
@@ -224,7 +244,7 @@ def find_best_move(
         alpha = float("-inf")
         beta = float("+inf")
 
-        for move in moves:
+        for move in safe_moves:
             child = simulate_move(board, move)
             try:
                 value = -negamax(
