@@ -44,7 +44,6 @@ except (IndexError, ValueError):
         "File scores.txt was found, but its structure isn't as expected."
     )
 
-
 app, window = create_app()
 
 model = load_model()
@@ -80,6 +79,14 @@ def find_last_piece(column):
             return row
 
     return None
+
+
+def sound_playback():
+    global sounds
+    if sounds:
+        sound_object = playsound(
+            random.choice(sounds), block=False
+        )  # asynchronous playback, doesn't require any extra threads or something
 
 
 def human_move(column):
