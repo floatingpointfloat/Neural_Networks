@@ -52,6 +52,28 @@ class Connect4Board(QWidget):
         self.last_move = last_move
         self.update()
 
+    def get_board_geometry(self):
+        width = self.width()
+        height = self.height()
+
+        board_width = width * 0.7
+        board_height = board_width * 6 / 7
+
+        board_x = (width - board_width) / 2
+        board_y = (height - board_height) * 0.75
+
+        cell_width = board_width / 7
+        cell_height = board_height / 6
+
+        return (
+            board_x,
+            board_y,
+            board_width,
+            board_height,
+            cell_width,
+            cell_height,
+        )
+
     def set_human_turn(self, value):
         self.human_turn = value
         self.update()
@@ -141,17 +163,14 @@ class Connect4Board(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)
 
-        width = self.width()
-        height = self.height()
-
-        board_width = min(height, width) * 0.95
-        board_height = board_width * 6 / 7
-
-        board_x = (width - board_width) / 2
-        board_y = (height - board_height) * 0.75
-
-        cell_width = board_width / 7
-        cell_height = board_height / 6
+        (
+            board_x,
+            board_y,
+            board_width,
+            board_height,
+            cell_width,
+            cell_height,
+        ) = self.get_board_geometry()
 
         painter.fillRect(self.rect(), QColor("#121212"))
         painter.setBrush(QBrush(QColor("#1976D2")))
@@ -248,10 +267,14 @@ class Connect4Board(QWidget):
         if self.animating:
             return
 
-        width = self.width()
-        board_width = min(width * 0.85, 630)
-        board_x = (width - board_width) / 2
-        cell_width = board_width / 7
+        (
+            board_x,
+            board_y,
+            board_width,
+            board_height,
+            cell_width,
+            cell_height,
+        ) = self.get_board_geometry()
         mouse_x = event.position().x()
 
         if board_x <= mouse_x <= board_x + board_width:
@@ -271,10 +294,14 @@ class Connect4Board(QWidget):
         if not self.human_turn:
             return
 
-        width = self.width()
-        board_width = min(width * 0.85, 630)
-        board_x = (width - board_width) / 2
-        cell_width = board_width / 7
+        (
+            board_x,
+            board_y,
+            board_width,
+            board_height,
+            cell_width,
+            cell_height,
+        ) = self.get_board_geometry()
         mouse_x = event.position().x()
 
         if board_x <= mouse_x <= board_x + board_width:
