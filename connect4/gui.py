@@ -66,7 +66,7 @@ class Connect4Board(QWidget):
 
         width = self.width()
         height = self.height()
-        board_width = width * 0.7
+        board_width = min(height, width) * 0.95
         board_height = board_width * 6 / 7
         board_x = (width - board_width) / 2
         board_y = (height - board_height) * 0.75
@@ -144,7 +144,7 @@ class Connect4Board(QWidget):
         width = self.width()
         height = self.height()
 
-        board_width = width * 0.7
+        board_width = min(height, width) * 0.95
         board_height = board_width * 6 / 7
 
         board_x = (width - board_width) / 2
