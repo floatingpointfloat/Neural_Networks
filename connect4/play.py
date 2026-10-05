@@ -2,6 +2,7 @@ import sys
 import threading
 import numpy as np
 from PySide6.QtCore import QTimer
+import time
 
 from gui import create_app
 from gamestates import (
@@ -67,6 +68,36 @@ ai_result = {
 }
 
 
+class ai_counter:
+    def __init__(self, time_limit):
+        self.time_limit = time_limit
+        self.start_time = time.time()
+        self.active = False
+
+    def activate_ai_counter(self):
+        self.start_time = time.time()
+        self.active = True
+
+        while self.active:
+            time_past = time.time() - self.start_time
+
+            if time_past >= self.time_limit:
+                break
+
+            window.status_label.setText(
+                f"AI is thinking... | Time until evaluation is complete: "
+                f"{round(self.time_limit - time_past, 1)}s"
+            )
+
+        self.active = False
+
+    def stop(self):
+        self.active = False
+
+
+ai_counter = ai_counter(TIME_LIMIT)
+
+
 def update_gui():
     window.board_widget.set_board(board, last_move)
     window.board_widget.set_human_turn(current_player == HUMAN)
@@ -117,7 +148,11 @@ def start_ai():
     ai_result["value"] = None
 
     thread = threading.Thread(target=ai_worker, args=(search_board,), daemon=True)
+    counter_thread = threading.Thread(
+        target=ai_counter.activate_ai_counter, daemon=True
+    )
     thread.start()
+    counter_thread.start()
 
 
 def check_ai_result():
@@ -128,6 +163,8 @@ def check_ai_result():
         return
     if not ai_result["finished"]:
         return
+
+    ai_counter.stop()
 
     move = ai_result["move"]
     value = ai_result["value"]
