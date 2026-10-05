@@ -13,7 +13,7 @@ from PySide6.QtGui import (
     QBrush,
     QPainterPath,
 )
-
+import time
 
 from gamestates import get_current_player
 
