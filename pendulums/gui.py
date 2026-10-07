@@ -26,8 +26,6 @@ from PySide6.QtWidgets import (
 class SimulationWidget(QWidget):
 
     # Signals
-    # Example:
-    # something_happened = Signal()
 
     def __init__(self):
         super().__init__()
@@ -42,17 +40,54 @@ class SimulationWidget(QWidget):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         # Timer
-        # Will later be used for the simulation loop
         self.simulation_timer = QTimer(self)
 
     def get_simulation_area_dimensions(self):
-        width = self.width()
-        height = self.height()
+        width = self.width() * 0.9
+        height = self.height() * 0.9
 
         return width, height
 
     def paintEvent(self, event: QPaintEvent):
-        pass
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        simulation_area_width, simulation_area_height = (
+            self.get_simulation_area_dimensions()
+        )
+
+        # Background
+        painter.fillRect(self.rect(), QColor("#121212"))
+
+        # Simulation area
+        x = (self.width() - simulation_area_width) / 2
+        y = (self.height() - simulation_area_height) / 2
+
+        painter.setPen(QPen(QColor("#444444"), 5))
+        painter.drawRect(
+            int(x),
+            int(y),
+            int(simulation_area_width),
+            int(simulation_area_height),
+        )
+
+        # Center point
+        center_x = self.width() / 2
+        center_y = self.height() / 2
+
+        painter.setPen(QPen(QColor("#FFFFFF"), 3))
+        painter.drawPoint(int(center_x), int(center_y))
+
+        # Vertical debug line
+        painter.setPen(QPen(QColor("#666666"), 1))
+        painter.drawLine(
+            int(center_x),
+            int(y),
+            int(center_x),
+            int(y + simulation_area_height),
+        )
+
+        painter.end()
 
     def mousePressEvent(self, event: QMouseEvent):
         pass
@@ -74,12 +109,15 @@ class SimulationWidget(QWidget):
 
 
 class MainWindow(QMainWindow):
-
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Pendulum Simulation")
         self.resize(1000, 700)
+
+        # Central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
 
         # Simulation widget
         self.simulation_widget = SimulationWidget()
@@ -104,7 +142,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.status_label)
         layout.addLayout(button_layout)
 
-        self.setLayout(layout)
+        central_widget.setLayout(layout)
 
 
 def create_app():
