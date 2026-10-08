@@ -43,16 +43,19 @@ class SimulationWidget(QWidget):
         self.simulation_timer = QTimer(self)
 
     def get_simulation_area_dimensions(self):
-        width = self.width() * 0.9
-        height = self.height() * 0.9
+        width = self.width()
+        height = self.height()
 
-        return width, height
+        simulation_area_width = width * 0.9
+        simulation_area_height = height * 0.9
+
+        return width, height, simulation_area_width, simulation_area_height
 
     def paintEvent(self, event: QPaintEvent):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
-        simulation_area_width, simulation_area_height = (
+        width, height, simulation_area_width, simulation_area_height = (
             self.get_simulation_area_dimensions()
         )
 
@@ -64,12 +67,7 @@ class SimulationWidget(QWidget):
         y = (self.height() - simulation_area_height) / 2
 
         painter.setPen(QPen(QColor("#444444"), 5))
-        painter.drawRect(
-            int(x),
-            int(y),
-            int(simulation_area_width),
-            int(simulation_area_height),
-        )
+        painter.drawRoundedRect(int())
 
         # Center point
         center_x = self.width() / 2
