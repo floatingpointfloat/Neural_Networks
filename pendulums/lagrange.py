@@ -1,3 +1,8 @@
+"""
+Implementation of the Lagrange formula
+Honestly, I don't fully understand the math and everything of it - but hey, it works
+"""
+
 import numpy as np
 
 
@@ -10,9 +15,9 @@ class DoublePendulumCart:
         length_1=0.5,
         length_2=0.5,
         gravity=9.81,
-        cart_friction=0.15,
-        joint_friction_1=0.02,
-        joint_friction_2=0.02,
+        cart_friction=0.05,
+        joint_friction_1=0.001,
+        joint_friction_2=0.001,
         x_min=-2.0,
         x_max=2.0,
     ):
@@ -39,8 +44,8 @@ class DoublePendulumCart:
 
         # initial state
         self.x = 0.0
-        self.theta_1 = np.deg2rad(170)
-        self.theta_2 = np.deg2rad(175)
+        self.theta_1 = 0.1
+        self.theta_2 = 0.1
 
         self.x_dot = 0.0
         self.theta_1_dot = 0.0
@@ -127,6 +132,77 @@ class DoublePendulumCart:
 
         return accelerations
 
+    def handle_collision(self, restitution=0.0):
+        if not 0.0 <= restitution <= 1.0:
+            raise ValueError("restitution must be between 0 and 1")
+
+        # get physical parameters
+        M = self.M
+        m1 = self.m1
+        m2 = self.m2
+
+        l1 = self.l1
+        l2 = self.l2
+
+        # calculate trigonometric values
+        theta_1 = self.theta_1
+        theta_2 = self.theta_2
+
+        cos_1 = np.cos(theta_1)
+        cos_2 = np.cos(theta_2)
+        cos_12 = np.cos(theta_1 - theta_2)
+
+        # build mass matrix
+        mass_matrix = np.array(
+            [
+                [
+                    M + m1 + m2,
+                    (m1 + m2) * l1 * cos_1,
+                    m2 * l2 * cos_2,
+                ],
+                [
+                    (m1 + m2) * l1 * cos_1,
+                    (m1 + m2) * l1**2,
+                    m2 * l1 * l2 * cos_12,
+                ],
+                [
+                    m2 * l2 * cos_2,
+                    m2 * l1 * l2 * cos_12,
+                    m2 * l2**2,
+                ],
+            ],
+            dtype=float,
+        )
+
+        # get velocities before collision
+        old_velocities = np.array(
+            [
+                self.x_dot,
+                self.theta_1_dot,
+                self.theta_2_dot,
+            ],
+            dtype=float,
+        )
+
+        # calculate response to a horizontal impulse
+        inverse_mass = np.linalg.solve(
+            mass_matrix,
+            np.array([1.0, 0.0, 0.0]),
+        )
+
+        effective_mass = inverse_mass[0]
+
+        # calculate collision impulse
+        impulse = -(1.0 + restitution) * self.x_dot / effective_mass
+
+        # apply impulse to the coupled system
+        new_velocities = old_velocities + impulse * inverse_mass
+
+        # update velocities
+        self.x_dot = new_velocities[0]
+        self.theta_1_dot = new_velocities[1]
+        self.theta_2_dot = new_velocities[2]
+
     def step(self, dt, force=0.0):
         if dt <= 0:
             raise ValueError("dt must be greater than zero")
@@ -144,18 +220,18 @@ class DoublePendulumCart:
         self.theta_1 += self.theta_1_dot * dt
         self.theta_2 += self.theta_2_dot * dt
 
-        # keep the cart on the rail
+        # handle rail collisions
         if self.x >= self.x_max:
             self.x = self.x_max
 
             if self.x_dot > 0:
-                self.x_dot = 0.0
+                self.handle_collision(restitution=0.0)
 
         elif self.x <= self.x_min:
             self.x = self.x_min
 
             if self.x_dot < 0:
-                self.x_dot = 0.0
+                self.handle_collision(restitution=0.0)
 
     def get_state(self):
         return self.x, self.theta_1, self.theta_2
