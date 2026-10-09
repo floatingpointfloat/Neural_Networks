@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 class SimulationWidget(QWidget):
 
     # Signals
+    reset_requested = Signal()
 
     def __init__(self):
         super().__init__()

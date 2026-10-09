@@ -235,3 +235,13 @@ class DoublePendulumCart:
 
     def get_state(self):
         return self.x, self.theta_1, self.theta_2
+
+    def reset(self):
+        # reset positions and velocities
+        self.x = 0.0
+        self.theta_1 = 0.1
+        self.theta_2 = 0.1
+
+        self.x_dot = 0.0
+        self.theta_1_dot = 0.0
+        self.theta_2_dot = 0.0

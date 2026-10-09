@@ -45,6 +45,7 @@ def main():
     # create timer
     timer = QTimer()
     timer.timeout.connect(update_simulation)
+    window.reset_button.clicked.connect(simulation.reset)
     timer.start(round(1000 / 240))
 
     sys.exit(app.exec())
