@@ -3,7 +3,7 @@ import threading
 import numpy as np
 from PySide6.QtCore import QTimer
 
-from pendulums.gui import create_app
+from gui import create_app
 from gamestates import (
     legal_moves,
     make_move,
