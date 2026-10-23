@@ -1,6 +1,10 @@
 from sys import exit
 import numpy as np
 import pygame
+import torch
+
+from load_model import load_model
+from predict import get_prediction_values
 
 WIDTH, HEIGHT = 600, 700
 BORDER_WIDTH = 10
@@ -10,6 +14,18 @@ pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Draw a number! | Press 'r' to reset")
 clock = pygame.time.Clock()
+
+# Select device and load model
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = load_model()
+
+# Fonts
+font = pygame.font.SysFont(None, 24)
+small_font = pygame.font.SysFont(None, 20)
+
+# Prediction values
+probabilities = np.zeros(10, dtype=np.float32)
+guess = None
 
 
 def render_matrix(matrix: np.ndarray, matrix_width=500, matrix_height=500) -> None:
@@ -53,7 +69,81 @@ def render_matrix(matrix: np.ndarray, matrix_width=500, matrix_height=500) -> No
                     ),
                 )
 
-    pygame.display.flip()
+
+def render_prediction_chart(probabilities: np.ndarray, guess) -> None:
+    chart_x = 55
+    chart_y = 570
+    chart_width = 490
+    chart_height = 80
+
+    title = font.render("Prediction probabilities", True, (255, 255, 255))
+    screen.blit(title, (chart_x, 560))
+
+    # Chart axes
+    pygame.draw.line(
+        screen,
+        (180, 180, 180),
+        (chart_x, chart_y + chart_height),
+        (chart_x + chart_width, chart_y + chart_height),
+        2,
+    )
+
+    bar_gap = 10
+    bar_width = (chart_width - 9 * bar_gap) / 10
+
+    for digit, probability in enumerate(probabilities):
+        bar_height = int(float(probability) * chart_height)
+        bar_x = int(chart_x + digit * (bar_width + bar_gap))
+        bar_y = chart_y + chart_height - bar_height
+
+        # Highlight the predicted digit
+        if guess is not None and digit == guess:
+            bar_color = (255, 60, 60)
+        else:
+            bar_color = (190, 190, 190)
+
+        pygame.draw.rect(
+            screen,
+            bar_color,
+            (
+                bar_x,
+                bar_y,
+                int(bar_width),
+                bar_height,
+            ),
+        )
+
+        # Digit labels
+        label = small_font.render(str(digit), True, (255, 255, 255))
+        screen.blit(
+            label,
+            (
+                bar_x + (bar_width - label.get_width()) / 2,
+                chart_y + chart_height + 5,
+            ),
+        )
+
+        # Probability labels
+        percentage = small_font.render(
+            f"{probability * 100:.0f}%",
+            True,
+            (255, 255, 255),
+        )
+
+        label_y = max(chart_y - 20, bar_y - 20)
+
+        screen.blit(
+            percentage,
+            (bar_x + (bar_width - percentage.get_width()) / 2, label_y),
+        )
+
+    if guess is not None:
+        prediction_text = font.render(
+            f"Prediction: {guess}",
+            True,
+            (255, 60, 60),
+        )
+        screen.blit(prediction_text, (400, 540))
 
 
 def draw_brush(matrix: np.ndarray, x: int, y: int, radius: int) -> None:
@@ -104,9 +194,9 @@ def update_matrix(matrix: np.ndarray, matrix_width=500, matrix_height=500) -> No
             new_x = round(OLD_POS_X + (x - OLD_POS_X) * t)
             new_y = round(OLD_POS_Y + (y - OLD_POS_Y) * t)
 
-            draw_brush(matrix, new_x, new_y, radius=10)
+            draw_brush(matrix, new_x, new_y, radius=20)
     else:
-        draw_brush(matrix, x, y, radius=10)
+        draw_brush(matrix, x, y, radius=20)
 
     OLD_POS_X, OLD_POS_Y = x, y
 
@@ -123,12 +213,30 @@ if __name__ == "__main__":
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
-                    test_matrix = np.zeros((matrix_width, matrix_height), dtype=np.int8)
+                    test_matrix = np.zeros(
+                        (matrix_width, matrix_height),
+                        dtype=np.int8,
+                    )
                     OLD_POS_X, OLD_POS_Y = None, None
+                    probabilities = np.zeros(10, dtype=np.float32)
+                    guess = None
+
             if event.type == pygame.MOUSEBUTTONUP:
                 OLD_POS_X, OLD_POS_Y = None, None
+
+                # Predict after finishing the drawing
+                if event.button == 1 and np.any(test_matrix):
+                    predicted_digit, predicted_probabilities = get_prediction_values(
+                        model,
+                        device,
+                        test_matrix,
+                    )
+
+                    guess = predicted_digit.item()
+                    probabilities = predicted_probabilities[0].cpu().numpy()
 
         # get constant actions
         mouse_buttons = pygame.mouse.get_pressed()
@@ -146,4 +254,7 @@ if __name__ == "__main__":
             matrix_height=matrix_height,
         )
 
+        render_prediction_chart(probabilities, guess)
+
+        pygame.display.flip()
         clock.tick(120)
