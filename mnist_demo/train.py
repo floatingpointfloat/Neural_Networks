@@ -115,7 +115,7 @@ for epoch in range(start_epoch, start_epoch + EPOCHS):
         if b % 50 == 0:
             print(
                 f"-----Epoch {epoch + 1} \t|\t "
-                f"Batch: {b} \t|\t Loss: {loss.item():.4f}"
+                f"Batch: {b} \t|\t Loss: {loss.item():.4f}-----"
             )
 
     avg_train_loss = total_train_loss / total_train_samples
@@ -142,9 +142,9 @@ for epoch in range(start_epoch, start_epoch + EPOCHS):
     avg_test_loss = total_test_loss / total_test_samples
 
     print(
-        f"\nEpoch [{epoch + 1}/{EPOCHS}] \t|\t "
-        f"Train Loss: {avg_train_loss:.4f} \t|\t "
-        f"Test Loss: {avg_test_loss:.4f}"
+        f"\EPOCH [{epoch + 1}/{EPOCHS}] \t|\t "
+        f"TRAIN LOSS: {avg_train_loss:.4f} \t|\t "
+        f"TEST LOSS: {avg_test_loss:.4f}"
     )
 
     # save checkpoint
