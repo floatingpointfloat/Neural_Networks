@@ -13,7 +13,7 @@ SAVE_EVERY_NTH_EPOCH = 1
 LEARNING_RATE = 0.001
 NUM_CLASSES = 10
 
-RESUME_TRAINING = False
+RESUME_TRAINING = True
 
 # master switch
 ALLOW_TRAINING = True
@@ -142,7 +142,7 @@ for epoch in range(start_epoch, start_epoch + EPOCHS):
     avg_test_loss = total_test_loss / total_test_samples
 
     print(
-        f"\EPOCH [{epoch + 1}/{EPOCHS}] \t|\t "
+        f"EPOCH [{epoch + 1}/{EPOCHS}] \t|\t "
         f"TRAIN LOSS: {avg_train_loss:.4f} \t|\t "
         f"TEST LOSS: {avg_test_loss:.4f}"
     )
