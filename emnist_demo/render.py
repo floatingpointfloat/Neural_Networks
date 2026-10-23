@@ -63,7 +63,7 @@ def draw_brush(matrix: np.ndarray, x: int, y: int, radius: int) -> None:
                 py = y + dy
 
                 if 0 <= px < matrix.shape[0] and 0 <= py < matrix.shape[1]:
-                    matrix[px, py] = 1 - matrix[px, py]
+                    matrix[px, py] = 1
 
 
 def update_matrix(matrix: np.ndarray, matrix_width=500, matrix_height=500) -> None:
@@ -91,7 +91,7 @@ def update_matrix(matrix: np.ndarray, matrix_width=500, matrix_height=500) -> No
     x = int((pos_x - matrix_x) / pixels_per_element)  # matrix indices
     y = int((pos_y - matrix_y) / pixels_per_element)
 
-    matrix = draw_brush(matrix, x, y, radius=5)
+    draw_brush(matrix, x, y, radius=5)
 
     return matrix
 
@@ -99,13 +99,16 @@ def update_matrix(matrix: np.ndarray, matrix_width=500, matrix_height=500) -> No
 if __name__ == "__main__":
     matrix_width = 500
     matrix_height = 500
-    test_matrix = np.ones((matrix_width, matrix_height), dtype=np.int8)
+    test_matrix = np.zeros((matrix_width, matrix_height), dtype=np.int8)
 
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    test_matrix = np.zeros((matrix_width, matrix_height), dtype=np.int8)
 
         # get constant actions
         mouse_buttons = pygame.mouse.get_pressed()
@@ -123,4 +126,4 @@ if __name__ == "__main__":
             matrix_height=matrix_height,
         )
 
-        clock.tick(60)
+        clock.tick(120)
