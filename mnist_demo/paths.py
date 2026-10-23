@@ -1,5 +1,5 @@
 from pathlib import Path
 
-checkpoint_file = Path(
-    r"C:\Users\Gigabyte\Documents\GitHub\Neural_Networks\mnist_demo\checkpoints\latest.pt"
-)
+PROJECT_DIR = Path(__file__).resolve().parent
+
+checkpoint_file = PROJECT_DIR / "checkpoints" / "latest.pt"
