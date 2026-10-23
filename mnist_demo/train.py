@@ -162,7 +162,7 @@ for epoch in range(start_epoch, start_epoch + EPOCHS):
             },
             checkpoint_file,
         )
-        print(f"Saved checkpoint at {checkpoint_file}")
+        print(f"Saved checkpoint at {checkpoint_file}\n")
 
 # display the time it took
 print(f"It took {(time.time() - start_time) / 60:.2f} minutes.")
