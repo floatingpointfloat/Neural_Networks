@@ -63,10 +63,6 @@ def main():
 
                         guess = None
 
-                    # Save the preprocessed 28x28 image.
-                    elif event.key == pygame.K_p:
-                        render.save_processed_image(matrix)
-
                 elif event.type == pygame.MOUSEBUTTONDOWN:
 
                     if event.button == 1:
