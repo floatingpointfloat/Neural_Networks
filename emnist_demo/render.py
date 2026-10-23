@@ -104,9 +104,9 @@ def update_matrix(matrix: np.ndarray, matrix_width=500, matrix_height=500) -> No
             new_x = round(OLD_POS_X + (x - OLD_POS_X) * t)
             new_y = round(OLD_POS_Y + (y - OLD_POS_Y) * t)
 
-            draw_brush(matrix, new_x, new_y, radius=5)
+            draw_brush(matrix, new_x, new_y, radius=10)
     else:
-        draw_brush(matrix, x, y, radius=5)
+        draw_brush(matrix, x, y, radius=10)
 
     OLD_POS_X, OLD_POS_Y = x, y
 
