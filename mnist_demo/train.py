@@ -10,7 +10,7 @@ from model import CNN_ResNet_Model
 EPOCHS = 1000
 BATCH_SIZE = 128
 SAVE_EVERY_NTH_EPOCH = 1
-LEARNING_RATE = 0.0005
+LEARNING_RATE = 0.0008
 NUM_CLASSES = 10
 
 RESUME_TRAINING = True
@@ -115,7 +115,7 @@ for epoch in range(start_epoch, start_epoch + EPOCHS):
         if b % 50 == 0:
             print(
                 f"-----Epoch {epoch + 1} \t|\t "
-                f"Batch: {b} \t|\t Loss: {loss.item():.4f}-----"
+                f"Batch: {b} \t|\t Loss: {loss.item()}-----"
             )
 
     avg_train_loss = total_train_loss / total_train_samples
@@ -143,13 +143,13 @@ for epoch in range(start_epoch, start_epoch + EPOCHS):
 
     print(
         f"\nEPOCH [{epoch + 1}/{EPOCHS + start_epoch}] \t|\t "
-        f"TRAIN LOSS: {avg_train_loss:.4f} \t|\t "
-        f"TEST LOSS: {avg_test_loss:.4f}"
+        f"TRAIN LOSS: {avg_train_loss} \t|\t "
+        f"TEST LOSS: {avg_test_loss}"
     )
 
     # save checkpoint
-    if (epoch + 1) % SAVE_EVERY_NTH_EPOCH == 0 and avg_train_loss < best_loss:
-        best_loss = avg_train_loss
+    if (epoch + 1) % SAVE_EVERY_NTH_EPOCH == 0 and avg_test_loss < best_loss:
+        best_loss = avg_test_loss
 
         checkpoint_file.parent.mkdir(parents=True, exist_ok=True)
         torch.save(
