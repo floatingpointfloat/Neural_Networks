@@ -1,18 +1,12 @@
 import pygame
 import numpy as np
 
-from predict import matrix_to_image
-
 # Window settings
-WINDOW_WIDTH = 650
-WINDOW_HEIGHT = 720
+WINDOW_WIDTH, WINDOW_HEIGHT = 650, 720
 
-MATRIX_WIDTH = 500
-MATRIX_HEIGHT = 500
-
-DRAW_X = 20
-DRAW_Y = 20
-
+# Drawing settings
+MATRIX_WIDTH, MATRIX_HEIGHT = 500, 500
+DRAW_X, DRAW_Y = 20, 20
 BRUSH_RADIUS = 15
 
 # Colors
@@ -24,10 +18,8 @@ TEXT_COLOR = (235, 235, 240)
 BAR_BACKGROUND = (60, 60, 70)
 BAR_COLOR = (70, 180, 110)
 
-
-# Previous mouse position for continuous drawing
-OLD_POS_X = None
-OLD_POS_Y = None
+# Previous mouse position
+OLD_POS_X, OLD_POS_Y = None, None
 
 
 def initialize_render():
@@ -45,33 +37,24 @@ def update_matrix(
     matrix_width=MATRIX_WIDTH,
     matrix_height=MATRIX_HEIGHT,
 ):
-    """
-    Draw onto the matrix using the current mouse position.
-
-    Matrix layout:
-        matrix[x, y]
-    """
-
     global OLD_POS_X, OLD_POS_Y
 
     mouse_x, mouse_y = pygame.mouse.get_pos()
 
-    # Convert window coordinates to drawing coordinates.
+    # Convert window coordinates to matrix coordinates.
     x = mouse_x - DRAW_X
     y = mouse_y - DRAW_Y
 
-    # Ignore drawing outside the drawing area.
+    # Only draw inside the drawing area.
     if not (0 <= x < matrix_width and 0 <= y < matrix_height):
-        OLD_POS_X = None
-        OLD_POS_Y = None
+        OLD_POS_X, OLD_POS_Y = None, None
         return matrix
 
+    # Remember the previous position.
     if OLD_POS_X is None or OLD_POS_Y is None:
-        OLD_POS_X = x
-        OLD_POS_Y = y
+        OLD_POS_X, OLD_POS_Y = x, y
 
-    # Interpolate between mouse positions so fast movement
-    # does not leave gaps in the stroke.
+    # Draw a continuous line between the old and new position.
     distance = max(
         abs(x - OLD_POS_X),
         abs(y - OLD_POS_Y),
@@ -85,22 +68,22 @@ def update_matrix(
         px = round(OLD_POS_X + (x - OLD_POS_X) * t)
         py = round(OLD_POS_Y + (y - OLD_POS_Y) * t)
 
+        # Limit the brush area to the matrix boundaries.
         x_min = max(0, px - BRUSH_RADIUS)
         x_max = min(matrix_width, px + BRUSH_RADIUS + 1)
 
         y_min = max(0, py - BRUSH_RADIUS)
         y_max = min(matrix_height, py + BRUSH_RADIUS + 1)
 
+        # Create a circular brush mask.
         yy, xx = np.ogrid[y_min:y_max, x_min:x_max]
 
         mask = (xx - px) ** 2 + (yy - py) ** 2 <= BRUSH_RADIUS**2
 
-        region = matrix[x_min:x_max, y_min:y_max]
+        # Update the original matrix in place.
+        matrix[x_min:x_max, y_min:y_max][mask] = 255
 
-        region[mask] = 255
-
-    OLD_POS_X = x
-    OLD_POS_Y = y
+    OLD_POS_X, OLD_POS_Y = x, y
 
     return matrix
 
@@ -110,16 +93,26 @@ def render_matrix(
     matrix_width=MATRIX_WIDTH,
     matrix_height=MATRIX_HEIGHT,
 ):
-    """
-    Render the drawing matrix in the Pygame window.
-    """
-
     screen = pygame.display.get_surface()
 
     if screen is None:
         return
 
-    # Matrix is stored as [x, y], which matches surfarray's layout.
+    screen.fill(BACKGROUND)
+
+    # Draw the black drawing area.
+    pygame.draw.rect(
+        screen,
+        DRAW_BACKGROUND,
+        (
+            DRAW_X,
+            DRAW_Y,
+            matrix_width,
+            matrix_height,
+        ),
+    )
+
+    # Convert the matrix into an RGB surface.
     rgb = np.repeat(
         matrix[:, :, np.newaxis],
         3,
@@ -128,14 +121,12 @@ def render_matrix(
 
     drawing_surface = pygame.surfarray.make_surface(rgb)
 
-    screen.fill(BACKGROUND)
-
     screen.blit(
         drawing_surface,
         (DRAW_X, DRAW_Y),
     )
 
-    # Drawing area border
+    # Draw a border around the drawing area.
     pygame.draw.rect(
         screen,
         (100, 100, 110),
@@ -145,15 +136,11 @@ def render_matrix(
             matrix_width,
             matrix_height,
         ),
-        width=2,
+        2,
     )
 
 
 def render_prediction_chart(probabilities, guess):
-    """
-    Display the predicted digit and probabilities for digits 0-9.
-    """
-
     screen = pygame.display.get_surface()
 
     if screen is None:
@@ -162,23 +149,24 @@ def render_prediction_chart(probabilities, guess):
     font = pygame.font.SysFont("Arial", 23)
     small_font = pygame.font.SysFont("Arial", 17)
 
-    # Prediction label
+    # Display the predicted digit.
     if guess is None:
         prediction_text = "Prediction: -"
     else:
         prediction_text = f"Prediction: {guess}"
 
-    prediction_surface = font.render(
+    text_surface = font.render(
         prediction_text,
         True,
         TEXT_COLOR,
     )
 
     screen.blit(
-        prediction_surface,
+        text_surface,
         (20, 535),
     )
 
+    # Display the probability chart.
     title_surface = small_font.render(
         "Class probabilities",
         True,
@@ -197,6 +185,7 @@ def render_prediction_chart(probabilities, guess):
     for digit in range(10):
         y = 595 + digit * 12
 
+        # Digit label.
         label = small_font.render(
             str(digit),
             True,
@@ -208,6 +197,7 @@ def render_prediction_chart(probabilities, guess):
             (40, y - 5),
         )
 
+        # Background bar.
         pygame.draw.rect(
             screen,
             BAR_BACKGROUND,
@@ -219,6 +209,7 @@ def render_prediction_chart(probabilities, guess):
             ),
         )
 
+        # Probability bar.
         probability = float(probabilities[digit])
 
         pygame.draw.rect(
@@ -232,6 +223,7 @@ def render_prediction_chart(probabilities, guess):
             ),
         )
 
+        # Percentage label.
         percentage = small_font.render(
             f"{probability * 100:.1f}%",
             True,
@@ -242,15 +234,3 @@ def render_prediction_chart(probabilities, guess):
             percentage,
             (bar_x + bar_width + 10, y - 5),
         )
-
-
-def save_processed_image(matrix, filename="processed_digit.png"):
-    """
-    Save the preprocessed 28x28 image used by the model.
-    """
-
-    image = matrix_to_image(matrix)
-
-    image.save(filename)
-
-    print(f"Saved processed image as {filename}")
