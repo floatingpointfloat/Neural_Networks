@@ -76,7 +76,7 @@ def update_matrix(
         y_max = min(matrix_height, py + BRUSH_RADIUS + 1)
 
         # Create a circular brush mask.
-        yy, xx = np.ogrid[y_min:y_max, x_min:x_max]
+        xx, yy = np.ogrid[x_min:x_max, y_min:y_max]
 
         mask = (xx - px) ** 2 + (yy - py) ** 2 <= BRUSH_RADIUS**2
 
