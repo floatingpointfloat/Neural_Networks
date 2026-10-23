@@ -7,7 +7,7 @@ import time
 from paths import checkpoint_file
 from model import CNN_ResNet_Model
 
-EPOCHS = 1000
+EPOCHS = 10000
 BATCH_SIZE = 128
 SAVE_EVERY_NTH_EPOCH = 1
 LEARNING_RATE = 0.0001
