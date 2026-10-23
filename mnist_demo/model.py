@@ -83,22 +83,22 @@ class CNN_ResNet_Model(nn.Module):
         self.fc = nn.Linear(128, num_classes)
 
     def forward(self, x):
-        x = self.initial(x)
+        x = self.initial(x)  # initial convolution and transition to 32 channels
 
-        x = self.resblock1(x)
+        x = self.resblock1(x)  # first resblock layer
         x = self.resblock2(x)
         x = self.pool1(x)
 
-        x = self.transition1(x)
+        x = self.transition1(x)  # second transition + resblock layer
         x = self.resblock3(x)
         x = self.resblock4(x)
         x = self.pool2(x)
 
-        x = self.transition2(x)
+        x = self.transition2(x)  # third transition + resblock layer
         x = self.resblock5(x)
 
         x = self.global_pool(x)
-        x = torch.flatten(x, start_dim=1)
+        x = torch.flatten(x, start_dim=1)  # flatten for the normal neural network
 
         x = self.fc(x)
 
