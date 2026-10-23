@@ -9,7 +9,7 @@ from model import CNN_ResNet_Model
 
 EPOCHS = 100
 BATCH_SIZE = 128
-SAVE_EVERY_NTH_EPOCH = 3
+SAVE_EVERY_NTH_EPOCH = 1
 LEARNING_RATE = 0.001
 NUM_CLASSES = 10
 
@@ -149,8 +149,9 @@ for epoch in range(start_epoch, start_epoch + EPOCHS):
 
     # save checkpoint
     if (epoch + 1) % SAVE_EVERY_NTH_EPOCH == 0 and avg_train_loss < best_loss:
-        checkpoint_file.parent.mkdir(parents=True, exist_ok=True)
+        best_loss = avg_train_loss
 
+        checkpoint_file.parent.mkdir(parents=True, exist_ok=True)
         torch.save(
             {
                 "epoch": epoch + 1,
