@@ -8,7 +8,7 @@ OLD_POS_X, OLD_POS_Y = None, None
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Draw a number!")
+pygame.display.set_caption("Draw a number! | Press 'r' to reset")
 clock = pygame.time.Clock()
 
 
