@@ -13,3 +13,12 @@ def matrix_to_tensor(matrix: np.ndarray) -> torch.Tensor:
     resized_matrix = np.asarray(image, dtype=np.float32) / 255.0
 
     return torch.from_numpy(resized_matrix)
+
+
+def get_prediction_values(model, device, matrix: np.ndarray):
+    tensor = matrix_to_tensor(matrix=matrix)
+
+    probabilities = model(tensor).to(device)
+    guess = torch.argmax(probabilities, dim=1)
+
+    return guess, probabilities
