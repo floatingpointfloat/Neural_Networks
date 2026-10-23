@@ -1,0 +1,126 @@
+from sys import exit
+import numpy as np
+import pygame
+
+WIDTH, HEIGHT = 600, 700
+BORDER_WIDTH = 10
+
+pygame.init()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Draw a number!")
+clock = pygame.time.Clock()
+
+
+def render_matrix(matrix: np.ndarray, matrix_width=500, matrix_height=500) -> None:
+    pixels_per_element = min(
+        (WIDTH - 100) / matrix_width,
+        (HEIGHT - 200) / matrix_height,
+    )
+
+    render_width = matrix_width * pixels_per_element
+    render_height = matrix_height * pixels_per_element
+
+    matrix_x = (WIDTH - render_width) // 2
+    matrix_y = 30
+
+    screen.fill((0, 0, 0))
+
+    pygame.draw.rect(
+        screen,
+        (255, 0, 0),
+        (
+            matrix_x - BORDER_WIDTH,
+            matrix_y - BORDER_WIDTH,
+            render_width + 2 * BORDER_WIDTH,
+            render_height + 2 * BORDER_WIDTH,
+        ),
+        width=BORDER_WIDTH,
+        border_radius=10,
+    )  # render the boundary
+
+    for x in range(matrix_width):
+        for y in range(matrix_height):
+            if matrix[x, y] == 1:
+                pygame.draw.rect(
+                    screen,
+                    (255, 255, 255),
+                    (
+                        matrix_x + x * pixels_per_element,
+                        matrix_y + y * pixels_per_element,
+                        pixels_per_element,
+                        pixels_per_element,
+                    ),
+                )
+
+    pygame.display.flip()
+
+
+def draw_brush(matrix: np.ndarray, x: int, y: int, radius: int) -> None:
+    for dx in range(-radius, radius + 1):
+        for dy in range(-radius, radius + 1):
+            if dx**2 + dy**2 <= radius**2:
+                px = x + dx
+                py = y + dy
+
+                if 0 <= px < matrix.shape[0] and 0 <= py < matrix.shape[1]:
+                    matrix[px, py] = 1 - matrix[px, py]
+
+
+def update_matrix(matrix: np.ndarray, matrix_width=500, matrix_height=500) -> None:
+    pixels_per_element = min(
+        (WIDTH - 100) / matrix_width,
+        (HEIGHT - 200) / matrix_height,
+    )
+
+    render_width = matrix_width * pixels_per_element
+    render_height = matrix_height * pixels_per_element
+
+    matrix_x = (WIDTH - render_width) // 2
+    matrix_y = 30
+
+    pos_x, pos_y = pygame.mouse.get_pos()
+
+    if (
+        pos_x < matrix_x
+        or pos_x >= matrix_x + render_width
+        or pos_y < matrix_y
+        or pos_y >= matrix_y + render_height
+    ):
+        return matrix
+
+    x = int((pos_x - matrix_x) / pixels_per_element)  # matrix indices
+    y = int((pos_y - matrix_y) / pixels_per_element)
+
+    matrix = draw_brush(matrix, x, y, radius=5)
+
+    return matrix
+
+
+if __name__ == "__main__":
+    matrix_width = 500
+    matrix_height = 500
+    test_matrix = np.ones((matrix_width, matrix_height), dtype=np.int8)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+
+        # get constant actions
+        mouse_buttons = pygame.mouse.get_pressed()
+
+        if mouse_buttons[0]:
+            test_matrix = update_matrix(
+                test_matrix,
+                matrix_width=matrix_width,
+                matrix_height=matrix_height,
+            )
+
+        render_matrix(
+            test_matrix,
+            matrix_width=matrix_width,
+            matrix_height=matrix_height,
+        )
+
+        clock.tick(60)
