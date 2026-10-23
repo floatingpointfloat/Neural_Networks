@@ -1,264 +1,256 @@
-from sys import exit
-
-import numpy as np
 import pygame
-import torch
+import numpy as np
 
-from load_model import load_model
-from predict import get_prediction_values, matrix_to_image
+from predict import matrix_to_image
 
-WIDTH, HEIGHT = 600, 700
-BORDER_WIDTH = 10
-OLD_POS_X, OLD_POS_Y = None, None
+# Window settings
+WINDOW_WIDTH = 650
+WINDOW_HEIGHT = 720
 
-pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Draw a number! | R: Reset | P: Save input")
-clock = pygame.time.Clock()
+MATRIX_WIDTH = 500
+MATRIX_HEIGHT = 500
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = load_model()
+DRAW_X = 20
+DRAW_Y = 20
 
-font = pygame.font.SysFont(None, 24)
-small_font = pygame.font.SysFont(None, 20)
+BRUSH_RADIUS = 15
 
-probabilities = np.zeros(10, dtype=np.float32)
-guess = None
+# Colors
+BACKGROUND = (25, 25, 30)
+DRAW_BACKGROUND = (0, 0, 0)
+DRAW_COLOR = (255, 255, 255)
 
-
-def render_matrix(matrix: np.ndarray, matrix_width=500, matrix_height=500) -> None:
-    pixels_per_element = min(
-        (WIDTH - 100) / matrix_width,
-        (HEIGHT - 200) / matrix_height,
-    )
-
-    render_width = matrix_width * pixels_per_element
-    render_height = matrix_height * pixels_per_element
-
-    matrix_x = (WIDTH - render_width) // 2
-    matrix_y = 30
-
-    screen.fill((0, 0, 0))
-
-    pygame.draw.rect(
-        screen,
-        (255, 0, 0),
-        (
-            matrix_x - BORDER_WIDTH,
-            matrix_y - BORDER_WIDTH,
-            render_width + 2 * BORDER_WIDTH,
-            render_height + 2 * BORDER_WIDTH,
-        ),
-        width=BORDER_WIDTH,
-        border_radius=10,
-    )
-
-    for x in range(matrix_width):
-        for y in range(matrix_height):
-            if matrix[x, y] == 1:
-                pygame.draw.rect(
-                    screen,
-                    (255, 255, 255),
-                    (
-                        matrix_x + x * pixels_per_element,
-                        matrix_y + y * pixels_per_element,
-                        pixels_per_element,
-                        pixels_per_element,
-                    ),
-                )
+TEXT_COLOR = (235, 235, 240)
+BAR_BACKGROUND = (60, 60, 70)
+BAR_COLOR = (70, 180, 110)
 
 
-def render_prediction_chart(probabilities: np.ndarray, guess) -> None:
-    chart_x = 55
-    chart_y = 570
-    chart_width = 490
-    chart_height = 80
-
-    title = font.render("Prediction probabilities", True, (255, 255, 255))
-    screen.blit(title, (55, 560))
-
-    pygame.draw.line(
-        screen,
-        (180, 180, 180),
-        (chart_x, chart_y + chart_height),
-        (chart_x + chart_width, chart_y + chart_height),
-        2,
-    )
-
-    bar_gap = 10
-    bar_width = (chart_width - 9 * bar_gap) / 10
-
-    for digit, probability in enumerate(probabilities):
-        bar_height = int(float(probability) * chart_height)
-        bar_x = int(chart_x + digit * (bar_width + bar_gap))
-        bar_y = chart_y + chart_height - bar_height
-
-        if guess is not None and digit == guess:
-            bar_color = (255, 60, 60)
-        else:
-            bar_color = (190, 190, 190)
-
-        pygame.draw.rect(
-            screen,
-            bar_color,
-            (
-                bar_x,
-                bar_y,
-                int(bar_width),
-                bar_height,
-            ),
-        )
-
-        label = small_font.render(str(digit), True, (255, 255, 255))
-        screen.blit(
-            label,
-            (
-                bar_x + (bar_width - label.get_width()) / 2,
-                chart_y + chart_height + 5,
-            ),
-        )
-
-        percentage = small_font.render(
-            f"{probability * 100:.0f}%",
-            True,
-            (255, 255, 255),
-        )
-
-        label_y = max(chart_y - 20, bar_y - 20)
-
-        screen.blit(
-            percentage,
-            (
-                bar_x + (bar_width - percentage.get_width()) / 2,
-                label_y,
-            ),
-        )
-
-    if guess is not None:
-        prediction_text = font.render(
-            f"Prediction: {guess}",
-            True,
-            (255, 60, 60),
-        )
-        screen.blit(prediction_text, (400, 560))
+# Previous mouse position for continuous drawing
+OLD_POS_X = None
+OLD_POS_Y = None
 
 
-def draw_brush(matrix: np.ndarray, x: int, y: int, radius: int) -> None:
-    for dx in range(-radius, radius + 1):
-        for dy in range(-radius, radius + 1):
-            if dx**2 + dy**2 <= radius**2:
-                px = x + dx
-                py = y + dy
+def initialize_render():
+    pygame.init()
 
-                if 0 <= px < matrix.shape[0] and 0 <= py < matrix.shape[1]:
-                    matrix[px, py] = 1
+    screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+
+    pygame.display.set_caption("MNIST Digit Recognition")
+
+    return screen
 
 
-def update_matrix(matrix: np.ndarray, matrix_width=500, matrix_height=500) -> None:
+def update_matrix(
+    matrix,
+    matrix_width=MATRIX_WIDTH,
+    matrix_height=MATRIX_HEIGHT,
+):
+    """
+    Draw onto the matrix using the current mouse position.
+
+    Matrix layout:
+        matrix[x, y]
+    """
+
     global OLD_POS_X, OLD_POS_Y
 
-    pixels_per_element = min(
-        (WIDTH - 100) / matrix_width,
-        (HEIGHT - 200) / matrix_height,
-    )
+    mouse_x, mouse_y = pygame.mouse.get_pos()
 
-    render_width = matrix_width * pixels_per_element
-    render_height = matrix_height * pixels_per_element
+    # Convert window coordinates to drawing coordinates.
+    x = mouse_x - DRAW_X
+    y = mouse_y - DRAW_Y
 
-    matrix_x = (WIDTH - render_width) // 2
-    matrix_y = 30
-
-    pos_x, pos_y = pygame.mouse.get_pos()
-
-    if (
-        pos_x < matrix_x
-        or pos_x >= matrix_x + render_width
-        or pos_y < matrix_y
-        or pos_y >= matrix_y + render_height
-    ):
-        OLD_POS_X, OLD_POS_Y = None, None
+    # Ignore drawing outside the drawing area.
+    if not (0 <= x < matrix_width and 0 <= y < matrix_height):
+        OLD_POS_X = None
+        OLD_POS_Y = None
         return matrix
 
-    x = int((pos_x - matrix_x) / pixels_per_element)
-    y = int((pos_y - matrix_y) / pixels_per_element)
+    if OLD_POS_X is None or OLD_POS_Y is None:
+        OLD_POS_X = x
+        OLD_POS_Y = y
 
-    if OLD_POS_X is not None and OLD_POS_Y is not None:
-        distance = max(abs(x - OLD_POS_X), abs(y - OLD_POS_Y))
+    # Interpolate between mouse positions so fast movement
+    # does not leave gaps in the stroke.
+    distance = max(
+        abs(x - OLD_POS_X),
+        abs(y - OLD_POS_Y),
+    )
 
-        for i in range(distance + 1):
-            t = i / max(distance, 1)
+    steps = max(1, distance)
 
-            new_x = round(OLD_POS_X + (x - OLD_POS_X) * t)
-            new_y = round(OLD_POS_Y + (y - OLD_POS_Y) * t)
+    for i in range(steps + 1):
+        t = i / steps
 
-            draw_brush(matrix, new_x, new_y, radius=15)
-    else:
-        draw_brush(matrix, x, y, radius=15)
+        px = round(OLD_POS_X + (x - OLD_POS_X) * t)
+        py = round(OLD_POS_Y + (y - OLD_POS_Y) * t)
 
-    OLD_POS_X, OLD_POS_Y = x, y
+        x_min = max(0, px - BRUSH_RADIUS)
+        x_max = min(matrix_width, px + BRUSH_RADIUS + 1)
+
+        y_min = max(0, py - BRUSH_RADIUS)
+        y_max = min(matrix_height, py + BRUSH_RADIUS + 1)
+
+        yy, xx = np.ogrid[y_min:y_max, x_min:x_max]
+
+        mask = (xx - px) ** 2 + (yy - py) ** 2 <= BRUSH_RADIUS**2
+
+        region = matrix[x_min:x_max, y_min:y_max]
+
+        region[mask] = 255
+
+    OLD_POS_X = x
+    OLD_POS_Y = y
 
     return matrix
 
 
-if __name__ == "__main__":
-    matrix_width = 500
-    matrix_height = 500
+def render_matrix(
+    matrix,
+    matrix_width=MATRIX_WIDTH,
+    matrix_height=MATRIX_HEIGHT,
+):
+    """
+    Render the drawing matrix in the Pygame window.
+    """
 
-    test_matrix = np.zeros(
-        (matrix_width, matrix_height),
-        dtype=np.int8,
+    screen = pygame.display.get_surface()
+
+    if screen is None:
+        return
+
+    # Matrix is stored as [x, y], which matches surfarray's layout.
+    rgb = np.repeat(
+        matrix[:, :, np.newaxis],
+        3,
+        axis=2,
     )
 
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
+    drawing_surface = pygame.surfarray.make_surface(rgb)
 
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_r:
-                    test_matrix = np.zeros(
-                        (matrix_width, matrix_height),
-                        dtype=np.int8,
-                    )
-                    OLD_POS_X, OLD_POS_Y = None, None
-                    probabilities = np.zeros(10, dtype=np.float32)
-                    guess = None
+    screen.fill(BACKGROUND)
 
-                elif event.key == pygame.K_p:
-                    processed_image = matrix_to_image(test_matrix)
-                    processed_image.save("processed_digit.png")
-                    print("Saved processed image to processed_digit.png")
+    screen.blit(
+        drawing_surface,
+        (DRAW_X, DRAW_Y),
+    )
 
-            if event.type == pygame.MOUSEBUTTONUP:
-                OLD_POS_X, OLD_POS_Y = None, None
+    # Drawing area border
+    pygame.draw.rect(
+        screen,
+        (100, 100, 110),
+        (
+            DRAW_X,
+            DRAW_Y,
+            matrix_width,
+            matrix_height,
+        ),
+        width=2,
+    )
 
-                if event.button == 1 and np.any(test_matrix):
-                    predicted_digit, predicted_probabilities = get_prediction_values(
-                        model,
-                        device,
-                        test_matrix,
-                    )
 
-                    guess = predicted_digit.item()
-                    probabilities = predicted_probabilities[0].cpu().numpy()
+def render_prediction_chart(probabilities, guess):
+    """
+    Display the predicted digit and probabilities for digits 0-9.
+    """
 
-        mouse_buttons = pygame.mouse.get_pressed()
+    screen = pygame.display.get_surface()
 
-        if mouse_buttons[0]:
-            test_matrix = update_matrix(
-                test_matrix,
-                matrix_width=matrix_width,
-                matrix_height=matrix_height,
-            )
+    if screen is None:
+        return
 
-        render_matrix(
-            test_matrix,
-            matrix_width=matrix_width,
-            matrix_height=matrix_height,
+    font = pygame.font.SysFont("Arial", 23)
+    small_font = pygame.font.SysFont("Arial", 17)
+
+    # Prediction label
+    if guess is None:
+        prediction_text = "Prediction: -"
+    else:
+        prediction_text = f"Prediction: {guess}"
+
+    prediction_surface = font.render(
+        prediction_text,
+        True,
+        TEXT_COLOR,
+    )
+
+    screen.blit(
+        prediction_surface,
+        (20, 535),
+    )
+
+    title_surface = small_font.render(
+        "Class probabilities",
+        True,
+        TEXT_COLOR,
+    )
+
+    screen.blit(
+        title_surface,
+        (20, 570),
+    )
+
+    bar_x = 70
+    bar_width = 440
+    bar_height = 9
+
+    for digit in range(10):
+        y = 595 + digit * 12
+
+        label = small_font.render(
+            str(digit),
+            True,
+            TEXT_COLOR,
         )
 
-        render_prediction_chart(probabilities, guess)
+        screen.blit(
+            label,
+            (40, y - 5),
+        )
 
-        pygame.display.flip()
-        clock.tick(120)
+        pygame.draw.rect(
+            screen,
+            BAR_BACKGROUND,
+            (
+                bar_x,
+                y,
+                bar_width,
+                bar_height,
+            ),
+        )
+
+        probability = float(probabilities[digit])
+
+        pygame.draw.rect(
+            screen,
+            BAR_COLOR,
+            (
+                bar_x,
+                y,
+                int(bar_width * probability),
+                bar_height,
+            ),
+        )
+
+        percentage = small_font.render(
+            f"{probability * 100:.1f}%",
+            True,
+            TEXT_COLOR,
+        )
+
+        screen.blit(
+            percentage,
+            (bar_x + bar_width + 10, y - 5),
+        )
+
+
+def save_processed_image(matrix, filename="processed_digit.png"):
+    """
+    Save the preprocessed 28x28 image used by the model.
+    """
+
+    image = matrix_to_image(matrix)
+
+    image.save(filename)
+
+    print(f"Saved processed image as {filename}")
