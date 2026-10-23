@@ -143,7 +143,7 @@ def render_prediction_chart(probabilities: np.ndarray, guess) -> None:
             True,
             (255, 60, 60),
         )
-        screen.blit(prediction_text, (400, 540))
+        screen.blit(prediction_text, (400, 560))
 
 
 def draw_brush(matrix: np.ndarray, x: int, y: int, radius: int) -> None:
