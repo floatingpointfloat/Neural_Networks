@@ -140,7 +140,7 @@ def render_matrix(
     )
 
 
-def render_prediction_chart(probabilities, guess):
+def render_prediction(guess):
     screen = pygame.display.get_surface()
 
     if screen is None:
@@ -165,72 +165,3 @@ def render_prediction_chart(probabilities, guess):
         text_surface,
         (20, 535),
     )
-
-    # Display the probability chart.
-    title_surface = small_font.render(
-        "Class probabilities",
-        True,
-        TEXT_COLOR,
-    )
-
-    screen.blit(
-        title_surface,
-        (20, 570),
-    )
-
-    bar_x = 70
-    bar_width = 440
-    bar_height = 9
-
-    for digit in range(10):
-        y = 595 + digit * 12
-
-        # Digit label.
-        label = small_font.render(
-            str(digit),
-            True,
-            TEXT_COLOR,
-        )
-
-        screen.blit(
-            label,
-            (40, y - 5),
-        )
-
-        # Background bar.
-        pygame.draw.rect(
-            screen,
-            BAR_BACKGROUND,
-            (
-                bar_x,
-                y,
-                bar_width,
-                bar_height,
-            ),
-        )
-
-        # Probability bar.
-        probability = float(probabilities[digit])
-
-        pygame.draw.rect(
-            screen,
-            BAR_COLOR,
-            (
-                bar_x,
-                y,
-                int(bar_width * probability),
-                bar_height,
-            ),
-        )
-
-        # Percentage label.
-        percentage = small_font.render(
-            f"{probability * 100:.1f}%",
-            True,
-            TEXT_COLOR,
-        )
-
-        screen.blit(
-            percentage,
-            (bar_x + bar_width + 10, y - 5),
-        )

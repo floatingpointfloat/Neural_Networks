@@ -108,9 +108,58 @@ def matrix_to_tensor(matrix, device):
 def get_prediction_values(model, device, matrix):
     """
     Return:
-        predicted_digit: scalar tensor containing the predicted digit
-        probabilities: tensor of shape (1, 10)
+        predicted_character: predicted character as a string
     """
+
+    CLASS_NAMES = [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T",
+        "U",
+        "V",
+        "W",
+        "X",
+        "Y",
+        "Z",
+        "a",
+        "b",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "n",
+        "q",
+        "r",
+        "t",
+    ]
 
     tensor = matrix_to_tensor(matrix, device)
 
@@ -126,4 +175,7 @@ def get_prediction_values(model, device, matrix):
             dim=1,
         )
 
-    return predicted_digit, probabilities
+    predicted_index = predicted_digit.item()
+    predicted_character = CLASS_NAMES[predicted_index]
+
+    return predicted_character

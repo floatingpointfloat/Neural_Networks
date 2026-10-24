@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 import time
+from pathlib import Path
 
 from paths import checkpoint_file
 from model import CNN_ResNet_Model
@@ -10,10 +11,10 @@ from model import CNN_ResNet_Model
 EPOCHS = 10000
 BATCH_SIZE = 128
 SAVE_EVERY_NTH_EPOCH = 1
-LEARNING_RATE = 0.0001
-NUM_CLASSES = 10
+LEARNING_RATE = 0.0008
+NUM_CLASSES = 47
 
-RESUME_TRAINING = True
+RESUME_TRAINING = False
 
 # master switch
 ALLOW_TRAINING = True
@@ -63,25 +64,19 @@ if RESUME_TRAINING:  # load existing training data
 
     print("Resuming from epoch:", start_epoch + 1)
 
-# dataset and dataloader
-transform = transforms.ToTensor()  # convert images to tensors
+# dataset and dataloader - EMNIST balanced split
+DATA_DIR = Path(__file__).resolve().parent / "data"
 
-DATA_DIR = r"C:\Users\Gigabyte\Documents\GitHub" r"\Neural_Networks\mnist_demo\data"
-
-# train data
-train_data = datasets.MNIST(
-    root=DATA_DIR,
-    train=True,
-    download=True,
-    transform=transform,
+transform = transforms.Compose(
+    [transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))]
 )
 
-# test data
-test_data = datasets.MNIST(
-    root=DATA_DIR,
-    train=False,
-    download=True,
-    transform=transform,
+train_data = datasets.EMNIST(
+    root=DATA_DIR, split="balanced", train=True, download=True, transform=transform
+)
+
+test_data = datasets.EMNIST(
+    root=DATA_DIR, split="balanced", train=False, download=True, transform=transform
 )
 
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)

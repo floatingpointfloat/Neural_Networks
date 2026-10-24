@@ -24,8 +24,6 @@ def main():
     model = model.to(device)
     model.eval()
 
-    print("Running on:", device)
-
     # Drawing matrix: 0 = black, 255 = white.
     matrix = np.zeros(
         (MATRIX_WIDTH, MATRIX_HEIGHT),

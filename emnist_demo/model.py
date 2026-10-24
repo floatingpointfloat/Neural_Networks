@@ -43,7 +43,7 @@ class ResBlock(nn.Module):
 
 
 class CNN_ResNet_Model(nn.Module):
-    def __init__(self, num_classes: int = 10):
+    def __init__(self, num_classes: int = 47):
         super().__init__()
 
         # initial convolution
