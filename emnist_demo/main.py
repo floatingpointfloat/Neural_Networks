@@ -94,7 +94,7 @@ def main():
                                 matrix,
                             )
 
-                            guess = int(predicted_character.item())
+                            guess = predicted_character
 
             # Update the matrix while the left mouse button is held.
             if pygame.mouse.get_pressed()[0]:

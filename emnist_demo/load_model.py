@@ -4,7 +4,7 @@ import time
 from paths import checkpoint_file
 from model import CNN_ResNet_Model
 
-NUM_CLASSES = 10
+NUM_CLASSES = 47
 
 
 def load_model():
