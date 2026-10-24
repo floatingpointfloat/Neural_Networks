@@ -139,7 +139,7 @@ for epoch in range(start_epoch, start_epoch + EPOCHS):
     print(
         f"\nEPOCH [{epoch + 1}/{EPOCHS + start_epoch}] \t|\t "
         f"TRAIN LOSS: {avg_train_loss} \t|\t "
-        f"TEST LOSS: {avg_test_loss}"
+        f"TEST LOSS: {avg_test_loss}\n"
     )
 
     # save checkpoint
